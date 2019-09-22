@@ -1,7 +1,7 @@
 package main
 
 import (
-	"519seven/battleship/pkg/models"
+	"github.com/519seven/cs610/battleship/pkg/models"
 	"html/template"
 	"path/filepath"
 	"time"
