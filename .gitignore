@@ -5,6 +5,9 @@
 *.so
 *.dylib
 *.tar.gz
+_oauth2creds
+*.creds
+.__*
 
 # Test binary, build with `go test -c`
 *.test
