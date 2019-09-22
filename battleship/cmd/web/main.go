@@ -1,7 +1,7 @@
 package main
 
 import (
-	"519seven/battleship/pkg/models/sqlite3"
+	"github.com/519seven/cs610/battleship/pkg/models/sqlite3"
 	"flag"
 	"html/template"
 	"log"

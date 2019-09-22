@@ -1,7 +1,7 @@
 package sqlite3
 
 import (
-	"519seven/battleship/pkg/models"
+	"github.com/519seven/cs610/battleship/pkg/models"
 	"database/sql"
 	"errors"
 )
