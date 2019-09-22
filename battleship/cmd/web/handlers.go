@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 	"bytes"
-	"errors"
+	"golang.org/x/xerrors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -84,7 +84,7 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 	}
 	s, err := app.boards.Get(boardID)
 	if err != nil {
-		if errors.Is(err, models.ErrNoRecord) {
+		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
 		} else {
 			app.serverError(w, err)
@@ -114,7 +114,7 @@ func (app *application) listBoard(w http.ResponseWriter, r *http.Request) {
 	}
 	s, err := app.boards.List(userID)
 	if err != nil {
-		if errors.Is(err, models.ErrNoRecord) {
+		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
 		} else {
 			app.serverError(w, err)
@@ -185,7 +185,7 @@ func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 	s, err := app.players.Get(playerID)
 	if err != nil {
-		if errors.Is(err, models.ErrNoRecord) {
+		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
 		} else {
 			app.serverError(w, err)
@@ -216,7 +216,7 @@ func (app *application) listPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 	s, err := app.players.List()
 	if err != nil {
-		if errors.Is(err, models.ErrNoRecord) {
+		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
 		} else {
 			app.serverError(w, err)

@@ -3,7 +3,7 @@ package sqlite3
 import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 	"database/sql"
-	"errors"
+	"golang.org/x/xerrors"
 	"time"
 )
 
@@ -16,7 +16,7 @@ func (m *PlayerModel) Get(id int) (*models.Player, error) {
 	s := &models.Player{}
 	err := m.DB.QueryRow(stmt, id).Scan(&s.ID, &s.ScreenName, &s.LastLogin)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if xerrors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNoRecord
 		} else {
 			return nil, err
@@ -65,7 +65,7 @@ func (m *PlayerModel) Update(id int, screenName string) (int, error) {
 	stmt := `UPDATE Users SET screenName = ?, lastLogin = ? WHERE id = ?`
 	_, err := m.DB.Exec(stmt, screenName, time.Now(), id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if xerrors.Is(err, sql.ErrNoRows) {
 			return id, models.ErrNoRecord
 		}
 	}

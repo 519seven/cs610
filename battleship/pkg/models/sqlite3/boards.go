@@ -3,7 +3,7 @@ package sqlite3
 import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 	"database/sql"
-	"errors"
+	"golang.org/x/xerrors"
 )
 
 type BoardModel struct {
@@ -23,7 +23,7 @@ func (m *BoardModel) Get(id int) (*models.Board, error) {
 	s := &models.Board{}
 	err := m.DB.QueryRow(stmt, id).Scan(&s.ID, &s.Title, &s.OwnerID, &s.GameID, &s.Created)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if xerrors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNoRecord
 		} else {
 			return nil, err
