@@ -80,3 +80,5 @@ Open your browser to http://<webserver_ip>:<port>
 
 ##### run web app and specify a different port
 `./web -port=:5055`
+
+Open your browser to http://<webserver_ip>:<port>
