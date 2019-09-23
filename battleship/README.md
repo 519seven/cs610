@@ -26,6 +26,7 @@ Proprietary license - https://github.com/golang/xerrors/blob/master/LICENSE
 `go get github.com/justinas/alice github.com/mattn/go-sqlite3 golang.org/x/xerrors github.com/519seven/cs610/battleship`
 
 ##### Ignore any errors about files missing.
+###### The errors indicate there are no .go files in the top directory.  This is indeed true
 ```
 Example:
 user@student:~$ go get github.com/519seven/cs610/battleship
