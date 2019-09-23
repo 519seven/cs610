@@ -61,7 +61,7 @@ Open your browser to http://<webserver_ip>:<port>
 ## Install by downloading the zip file
 
 ##### From your local machine where the zip was downloaded
-`scp ~/Downloads/battleship.zip <user>:<webserver>:`
+`scp ~/Downloads/Battleship.zip <user>:<webserver>:`
 
 ##### On your web server
 `mkdir -p $(go env GOPATH)/src/github.com/519seven/cs610`
