@@ -38,8 +38,6 @@ package github.com/519seven/cs610/battleship: no Go files in /cs/home/stu/akeypj
 `go build ./cmd/web`
 
 ##### view help dialog
-`./web -port=:5055`
-
 ```
  user@student:~/go/src/github.com/519seven/cs610/battleship$ ./web -h
 Usage of ./web:
@@ -51,10 +49,13 @@ Usage of ./web:
         HTTP port on which to listen (default ":5033")
 ```
    
-##### run web app with default settings
+##### run web app with default settings (port 5033 is default)
 `./web`
 
-Open your browser to http://<webserver_ip>:5033
+##### run web app with alternative port number
+`./web -port=:5055`
+
+Open your browser to http://<webserver_ip>:<port>
 
 
 ## Install by downloading the zip file
