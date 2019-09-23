@@ -74,3 +74,9 @@ Open your browser to http://<webserver_ip>:<port>
 ##### cd into the battleship root directory and run
 `cd $(go env GOPATH)/src/github.com/519seven/cs610/battleship`
 `go build ./cmd/web`
+
+##### run web app with default settings (default port number is 5033)
+`./web`
+
+##### run web app and specify a different port
+`./web -port=:5055`
