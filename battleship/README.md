@@ -1,0 +1,73 @@
+## Battleship
+
+### Pre-requisites
+
+**github.com/justinas/alice**
+
+middleware - to chain HTTP events together
+
+MIT license - https://github.com/justinas/alice/blob/master/LICENSE
+
+**github.com/mattn/go-sqlite3**
+
+driver for the sqlite3 datastore
+
+MIT license - https://github.com/mattn/go-sqlite3/blob/master/LICENSE
+
+**golang.org/x/xerrors**
+
+a v1.13 'errors'-like module so you can future-proof your v1.10 and v1.11 code
+
+Proprietary license - https://github.com/golang/xerrors/blob/master/LICENSE
+
+## Installation/Deployment Steps Using `go get`
+
+##### `go get` some libraries, including my project
+`go get github.com/justinas/alice github.com/mattn/go-sqlite3 golang.org/x/xerrors github.com/519seven/cs610/battleship`
+
+##### Ignore any errors about files missing.
+```
+Example:
+user@student:~$ go get github.com/519seven/cs610/battleship
+package github.com/519seven/cs610/battleship: no Go files in /cs/home/stu/akeypj/go/src/github.com/519seven/cs610/battleship
+```
+##### cd to my project's directory in your GOPATH
+`cd $(go env GOPATH)/src/github.com/519seven/cs610/battleship`
+
+##### run the go build command
+`go build ./cmd/web`
+
+##### view help dialog
+`./web -port=:5055`
+
+```
+ user@student:~/go/src/github.com/519seven/cs610/battleship$ ./web -h
+Usage of ./web:
+  -dsn string
+        SQLite data source name (default "./battleship.db")
+  -initialize
+        Start with a fresh database
+  -port string
+        HTTP port on which to listen (default ":5033")
+```
+   
+##### run web app with default settings
+`./web`
+
+Open your browser to http://<webserver_ip>:5033
+
+
+## Install by downloading the zip file
+
+##### From your local machine where the zip was downloaded
+`scp ~/Downloads/battleship.zip <user>:<webserver>:`
+
+##### On your web server
+`unzip Akey_battleship.zip`
+
+##### Get three git modules
+`go get github.com/justinas/alice github.com/mattn/go-sqlite3 golang.org/x/xerrors`
+
+##### cd into the battleship root directory and run
+`cd $(go env GOPATH)/src/github.com/519seven/cs610/battleship`
+`go build ./cmd/web`
