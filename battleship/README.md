@@ -63,7 +63,9 @@ Open your browser to http://<webserver_ip>:5033
 `scp ~/Downloads/battleship.zip <user>:<webserver>:`
 
 ##### On your web server
-`unzip Akey_battleship.zip`
+`mkdir -p $(go env GOPATH)/src/github.com/519seven/cs610`
+
+`unzip -o -q Battleship.zip -d $(go env GOPATH)/src/github.com/519seven/cs610`
 
 ##### Get three git modules
 `go get github.com/justinas/alice github.com/mattn/go-sqlite3 golang.org/x/xerrors`
