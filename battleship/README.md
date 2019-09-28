@@ -56,7 +56,7 @@ Usage of ./web:
 ##### run web app with alternative port number
 `./web -port=:5055`
 
-Open your browser to http://<webserver_ip>:<port>
+Open your browser to http://<webserver_ip>:&lt;port&gt;
 
 
 ## Install by downloading the zip file
