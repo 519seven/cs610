@@ -29,6 +29,7 @@ deps:
 		$(GO113GET) golang.org/x/xerrors
 		$(GO113GET) github.com/justinas/alice
 		$(GO113GET) github.com/mattn/go-sqlite3
+		$(GO113GET) github.com/golangcollege/sessions@v1
 
 download:
 		$(GOGET) golang.org/dl/go1.13.1
