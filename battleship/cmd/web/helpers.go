@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime/debug"
 	"time"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -36,24 +37,27 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		return nil, err
 	}
 	// create the tables if they don't exist
-	statement, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS Battles 
+	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS Battles 
 		(id INTEGER PRIMARY KEY, player1ID INTEGER, player2ID INTEGER, turn INTEGER)`)
-	statement.Exec()
-	statement, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
+	stmt.Exec()
+	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
 		(id INTEGER PRIMARY KEY, boardName TEXT, userID INTEGER, gameID INTEGER, 
 		 created DATETIME DEFAULT CURRENT_TIMESTAMP)`)
-	statement.Exec()
-	statement, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Positions 
-		(id INTEGER PRIMARY KEY, boardID INTEGER, battleshipID INTEGER, 
-		 playerID INTEGER, coordX INTEGER, coordY INTEGER, pinColor TEXT)`)
-	statement.Exec()
-	statement, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Ships 
+	stmt.Exec()
+	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Positions 
+		(id INTEGER PRIMARY KEY, boardID INTEGER, shipID INTEGER, 
+		 userID INTEGER, coordX INTEGER, coordY TEXT, pinColor TEXT)`)
+	stmt.Exec()
+	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Ships 
 		(id INTEGER PRIMARY KEY, shipType TEXT, shipLength INTEGER)`)
-	statement.Exec()
-	statement, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Users 
+	stmt.Exec()
+	stmt, _ = db.Prepare(`INSERT INTO Ships (shipType, shipLength) VALUES 
+		('carrier', 5), ('battleship', 4), ('cruiser', 3), ('submarine', 3), ('destroyer', 2)`)
+	stmt.Exec()
+	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Users 
 		(id INTEGER PRIMARY KEY, screenName TEXT, isActive BOOLEAN, 
 		 lastLogin DATETIME)`)
-	statement.Exec()
+	stmt.Exec()
 
 	return db, nil
 }
@@ -96,15 +100,31 @@ func checkMethod(m string, w http.ResponseWriter, r *http.Request) (http.Respons
 // -----------------------------------------------------------------------------
 // General
 
+// clean form data
+func cleanCoordinates(coordinates string) string {
+	cleanString := strings.Replace(coordinates, "\t", "", -1)
+	cleanString = strings.Replace(cleanString, "\n", "", -1)
+	return strings.Replace(cleanString, " ", "", -1)
+}
+
 // check relationship between current user and a resource
 func (app *application) checkRelationship(resourceID int) bool {
 	return true
 }
 
-// add default data to board info screens
+// add default data to create board interface
 func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Request) *templateDataBoard {
 	if td == nil {
 		td = &templateDataBoard{}
+	}
+	td.CurrentYear = time.Now().Year()
+	return td
+}
+
+// add default data to list of boards screens
+func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Request) *templateDataBoards {
+	if td == nil {
+		td = &templateDataBoards{}
 	}
 	td.CurrentYear = time.Now().Year()
 	return td
@@ -119,17 +139,37 @@ func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Req
 	return td
 }
 
-// cache templates for Boards
-func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoard) {
+// cache templates for Board
+func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoard) {
 	ts, ok := app.templateCache[name]
 	if !ok {
 		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
 		return
 	}
 
+	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
-	// execute template set, passing the dynamic data with the current year
+	// execute template set, passing the dynamic data with the copyright year
 	err := ts.Execute(buf, app.addDefaultDataBoard(td, r))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)
+}
+
+// cache templates for Boards
+func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoards) {
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataBoards(td, r))
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -139,14 +179,16 @@ func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, nam
 
 // cache templates for Players
 func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayer) {
+	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
 	if !ok {
 		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
 		return
 	}
 
+	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
-	// execute template set, passing the dynamic data with the current year
+	// execute template set, passing the dynamic data with the copyright year
 	err := ts.Execute(buf, app.addDefaultDataPlayer(td, r))
 	if err != nil {
 		app.serverError(w, err)

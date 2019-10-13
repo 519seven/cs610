@@ -134,6 +134,7 @@ nav a.live:after {
     background: #F7F9FA;
     border-left: 1px solid #E4E5E7;
     border-bottom: 1px solid #E4E5E7;
+    transform: rotate(45deg);
     -moz-transform: rotate(45deg);
     -webkit-transform: rotate(-45deg);
 }
@@ -282,18 +283,29 @@ table {
     width: 100%;
 }
 
+table.form {
+    background: rgb(66, 60, 60);
+    border: 1px solid rgb(10, 47, 121);
+    border-collapse: collapse;
+    width: 100%;
+}
+
 td, th {
     text-align: left;
     padding: 9px 18px;
 }
 
 th:last-child, td:last-child {
-    text-align: right;
-    color: #6A6C6F;
+    text-align: left;
+    color: rgb(9, 14, 20);
+}
+
+td:nth-child(2n) {
+    background-color: lightblue;
 }
 
 tr {
-    border-bottom: 1px solid #E4E5E7;
+    border-bottom: 1px solid rgb(72, 182, 247);
 }
 
 tr:nth-child(2n) {

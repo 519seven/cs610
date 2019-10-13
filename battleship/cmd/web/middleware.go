@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// add headers to help prevent XSS and Clickjacking attacks
+// simple function to  add headers to help prevent XSS and Clickjacking attacks
 func secureHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
@@ -30,6 +30,10 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 				// set a connection close header on the response
 				w.Header().Set("Connection", "close")
 				// call app.serverError to return a 500 response
+				// normalize err into an error using Efforf to create
+				// a new error object containing the default textual
+				// representation of the interface{} value
+				// then pass it to serverError helper method
 				app.serverError(w, fmt.Errorf("%s", err))
 			}
 		}()

@@ -3,7 +3,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/justinas/alice"
+	"github.com/bmizerany/pat"	// router
+	"github.com/justinas/alice"	// middleware
 )
 
 // Update routes to make it return http.Handler rather than *http.ServeMux
@@ -12,8 +13,9 @@ func (app *application) routes() http.Handler {
 	// every request will use this middleware chain
 	standardMiddleware := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", app.home)
+	mux := pat.New()
+	mux.Get("/", http.HandlerFunc(app.home))
+	// More specific routes at the top, less specific routes follow...
 	// BATTLES
 	/*
 		mux.HandleFunc("/battle", app.displayBattle)
@@ -22,15 +24,17 @@ func (app *application) routes() http.Handler {
 		mux.HandleFunc("/battle/update", app.updateBattle)
 	*/
 	// BOARDS
-	mux.HandleFunc("/board", app.displayBoard)
-	mux.HandleFunc("/board/create", app.createBoard)
-	mux.HandleFunc("/board/list", app.listBoard)
-	mux.HandleFunc("/board/update", app.updateBoard)
+	mux.Post("/board/create", http.HandlerFunc(app.createBoard))		// save board info
+	mux.Get("/board/create", http.HandlerFunc(app.createBoardForm))		// display board if GET
+	mux.Get("/board/list", http.HandlerFunc(app.listBoard))
+	mux.Get("/board/update/:id", http.HandlerFunc(app.updateBoard))
+	mux.Get("/board/:id", http.HandlerFunc(app.displayBoard))
 	// PLAYERS
-	mux.HandleFunc("/player", app.displayPlayer)
-	mux.HandleFunc("/player/create", app.createPlayer)
-	mux.HandleFunc("/player/list", app.listPlayer)
-	mux.HandleFunc("/player/update", app.updatePlayer)
+	mux.Post("/player/create", http.HandlerFunc(app.createPlayer))		// save player info
+	mux.Get("/player/create", http.HandlerFunc(app.createPlayer))		// display form if GET
+	mux.Get("/player/list", http.HandlerFunc(app.listPlayer))
+	mux.Get("/player/update/:id", http.HandlerFunc(app.updatePlayer))
+	mux.Get("/player/:id", http.HandlerFunc(app.displayPlayer))
 	// POSITIONS
 	/*
 		mux.HandleFunc("/position", app.selectPosition)
@@ -44,7 +48,7 @@ func (app *application) routes() http.Handler {
 		mux.HandleFunc("/ship/list", app.listShip)
 	*/
 	// AUTH
-	mux.HandleFunc("/logout", app.logout)
+	mux.Post("/logout", http.HandlerFunc(app.logout))
 	/*
 		mux.HandleFunc("/user/create", app.createUser)
 		mux.HandleFunc("/user/list", app.listUser)
@@ -53,7 +57,7 @@ func (app *application) routes() http.Handler {
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	// remove a specific prefix from the request's URL path
 	// before passing the request on to the file server
-	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
+	mux.Get("/static/", http.StripPrefix("/static", fileServer))
 
 	// without using "alice"
 	//return app.recoverPanic(app.logRequest(secureHeaders(mux)))
