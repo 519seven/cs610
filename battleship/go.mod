@@ -1,4 +1,4 @@
-module 519seven/battleship
+module github.com/519seven/cs610/battleship
 
 go 1.13
 
