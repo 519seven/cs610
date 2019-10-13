@@ -1,0 +1,31 @@
+{{template "base" .}}
+
+{{define "title"}}Battleship{{end}}
+
+{{define "main"}}
+	{{if .Boards}}
+		{{with .Boards}}
+		<table>
+			<tr>
+				<th>ID</th>
+				<td>Created</th>
+				<th>Title</th>
+				<th>Game ID</th>
+				<th>Battle result</th>
+			</tr>
+			{{range .}}
+			<tr>
+				<td>#{{.ID}}</td>
+				<td>{{humanDate .Created}}</td>
+				<td><a href="/board/{{.ID}}">{{.Title}}</a></td>
+				<td>{{.GameID}}</td>
+				<td>In progress|Win|Loss</td>
+			</tr>
+			{{end}}
+		</table>
+		{{end}}
+	{{else}}
+		<p>Nothing to see just yet</p>
+	{{end}}
+	<a href="/board/create">Create a new board</a>
+{{end}}
