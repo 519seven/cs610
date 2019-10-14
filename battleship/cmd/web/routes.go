@@ -13,8 +13,11 @@ func (app *application) routes() http.Handler {
 	// every request will use this middleware chain
 	standardMiddleware := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 
+	// Create a new middleware chain to accommodate our session middleware
+	dynamicMiddleware := alice.New(app.session.Enable)
+
 	mux := pat.New()
-	mux.Get("/", http.HandlerFunc(app.home))
+	mux.Get("/", dynamicMiddleware.ThenFunc(app.home))
 	// More specific routes at the top, less specific routes follow...
 	// BATTLES
 	/*
@@ -23,18 +26,20 @@ func (app *application) routes() http.Handler {
 		mux.HandleFunc("/battle/list", app.listBattle)
 		mux.HandleFunc("/battle/update", app.updateBattle)
 	*/
+	// Update routes to use the new dynamic middleware chain for our session middleware
+	
 	// BOARDS
-	mux.Post("/board/create", http.HandlerFunc(app.createBoard))		// save board info
-	mux.Get("/board/create", http.HandlerFunc(app.createBoardForm))		// display board if GET
-	mux.Get("/board/list", http.HandlerFunc(app.listBoard))
-	mux.Get("/board/update/:id", http.HandlerFunc(app.updateBoard))
-	mux.Get("/board/:id", http.HandlerFunc(app.displayBoard))
+	mux.Post("/board/create", dynamicMiddleware.ThenFunc(app.createBoard))			// save board info
+	mux.Get("/board/create", dynamicMiddleware.ThenFunc(app.createBoardForm))		// display board if GET
+	mux.Get("/board/list", dynamicMiddleware.ThenFunc(app.listBoard))
+	mux.Get("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
+	mux.Get("/board/:id", dynamicMiddleware.ThenFunc(app.displayBoard))
 	// PLAYERS
-	mux.Post("/player/create", http.HandlerFunc(app.createPlayer))		// save player info
-	mux.Get("/player/create", http.HandlerFunc(app.createPlayer))		// display form if GET
-	mux.Get("/player/list", http.HandlerFunc(app.listPlayer))
-	mux.Get("/player/update/:id", http.HandlerFunc(app.updatePlayer))
-	mux.Get("/player/:id", http.HandlerFunc(app.displayPlayer))
+	mux.Post("/player/create", dynamicMiddleware.ThenFunc(app.createPlayer))		// save player info
+	mux.Get("/player/create", dynamicMiddleware.ThenFunc(app.createPlayer))			// display form if GET
+	mux.Get("/player/list", dynamicMiddleware.ThenFunc(app.listPlayer))
+	mux.Get("/player/update/:id", dynamicMiddleware.ThenFunc(app.updatePlayer))
+	mux.Get("/player/:id", dynamicMiddleware.ThenFunc(app.displayPlayer))
 	// POSITIONS
 	/*
 		mux.HandleFunc("/position", app.selectPosition)

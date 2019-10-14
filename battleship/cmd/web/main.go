@@ -1,25 +1,29 @@
 package main
 
 import (
-	"github.com/519seven/cs610/battleship/pkg/models/sqlite3"
 	"flag"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/519seven/cs610/battleship/pkg/models/sqlite3"
+	"github.com/golangcollege/sessions"
 )
 
 // custom application struct
 // this makes objects available to our handlers
 type application struct {
-	errorLog      *log.Logger
-	infoLog       *log.Logger
-	battles       *sqlite3.BattleModel
-	boards        *sqlite3.BoardModel
-	positions     *sqlite3.PositionModel
-	ships         *sqlite3.ShipModel
-	players       *sqlite3.PlayerModel
-	templateCache map[string]*template.Template
+	errorLog      	*log.Logger
+	infoLog       	*log.Logger
+	battles       	*sqlite3.BattleModel
+	boards        	*sqlite3.BoardModel
+	positions     	*sqlite3.PositionModel
+	session			*sessions.Session
+	ships         	*sqlite3.ShipModel
+	players       	*sqlite3.PlayerModel
+	templateCache 	map[string]*template.Template
 }
 
 // why models?
@@ -39,6 +43,7 @@ func main() {
 	port := flag.String("port", ":5033", "HTTP port on which to listen")
 	dsn := flag.String("dsn", "./battleship.db", "SQLite data source name")
 	initdb := flag.Bool("initialize", false, "Start with a fresh database")
+	secret := flag.String("secret", "nquR81XagSrAEHYXJSFw8y2PLbyWlF1Z", "Secret key")
 	flag.Parse()
 
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
@@ -55,16 +60,23 @@ func main() {
 	if err != nil {
 		errorLog.Fatal(err)
 	}
+
+	// Initialize new session manager passing in the secret key
+	session := sessions.New([]byte(*secret))
+	// sessions expire after 12 hours
+	session.Lifetime = 12 * time.Hour
+
 	// new instance of application containing dependencies
 	app := &application{
-		errorLog:      errorLog,
-		infoLog:       infoLog,
-		battles:       &sqlite3.BattleModel{DB: db},
-		boards:        &sqlite3.BoardModel{DB: db},
-		players:       &sqlite3.PlayerModel{DB: db},
-		positions:     &sqlite3.PositionModel{DB: db},
-		ships:         &sqlite3.ShipModel{DB: db},
-		templateCache: templateCache,
+		errorLog:      	errorLog,
+		infoLog:       	infoLog,
+		battles:       	&sqlite3.BattleModel{DB: db},
+		boards:        	&sqlite3.BoardModel{DB: db},
+		players:       	&sqlite3.PlayerModel{DB: db},
+		positions:     	&sqlite3.PositionModel{DB: db},
+		session:		session,
+		ships:         	&sqlite3.ShipModel{DB: db},
+		templateCache: 	templateCache,
 	}
 
 	srv := &http.Server{
