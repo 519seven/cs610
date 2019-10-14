@@ -6,19 +6,17 @@ GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 
 # Go 1.13.1 commands
-GO113CMD=~/go/bin/go1.13.1
-GO113BUILD=$(GOCMD) build
-GO113CLEAN=$(GOCMD) clean
-GO113TEST=$(GOCMD) test
-GO113GET=$(GOCMD) get
+GO113CMD=~/go/bin/go1.13
+GO113BUILD=$(GO113CMD) build
+GO113CLEAN=$(GO113CMD) clean
+GO113TEST=$(GO113CMD) test
+GO113GET=$(GO113CMD) get
 
 # Binary names
 BINARY_NAME=battleship
 BINARY_UNIX=$(BINARY_NAME)_unix
 
-export PATH := $(PATH):~/go/bin
-
-all: download build
+all: setup build
 build: 
 		$(GO113BUILD) -o $(BINARY_NAME) -v ./cmd/web 
 clean: 
@@ -29,17 +27,16 @@ deps:
 		$(GO113GET) golang.org/x/xerrors
 		$(GO113GET) github.com/justinas/alice
 		$(GO113GET) github.com/mattn/go-sqlite3
+		$(GO113GET) github.com/golangcollege/sessions@v1
 
-download:
-		$(GOGET) golang.org/dl/go1.13.1
-		$(GO113CMD) download
 run:
 		$(GO113BUILD) -o $(BINARY_NAME) -v ./...
 		./$(BINARY_NAME)
+setup:
+		set -e; ./setup_env.sh
+
 test: 
 		$(GO113TEST) -v ./...
 
-
-# Cross compilation
 build-linux:
 		CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX) -v
