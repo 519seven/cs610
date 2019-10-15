@@ -12,6 +12,7 @@ import (
 // Allow more data to be passed to the template
 type templateDataBattle struct {
 	CurrentYear 			int
+	Flash					string
 	Form					*forms.Form
 	Battle      			*models.Battle
 	Battles     			[]*models.Battle
@@ -19,6 +20,7 @@ type templateDataBattle struct {
 // single board
 type templateDataBoard struct {
 	CurrentYear 			int
+	Flash					string
 	Form					*forms.Form
 	PositionsOnBoard       	*models.PositionsOnBoard
 	PositionsOnBoards      	[]*models.PositionsOnBoard
@@ -26,18 +28,21 @@ type templateDataBoard struct {
 // list of boards
 type templateDataBoards struct {
 	CurrentYear 			int
+	Flash					string
 	Form					*forms.Form
 	Board					*models.Board
 	Boards					[]*models.Board
 }
 type templateDataPlayer struct {
 	CurrentYear 			int
+	Flash					string
 	Form					*forms.Form
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
 type templateDataPosition struct {
 	CurrentYear 			int
+	Flash					string
 	Form					*forms.Form
 	Position    			*models.Position
 	Positions   			[]*models.Position

@@ -118,6 +118,7 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 		td = &templateDataBoard{}
 	}
 	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
 	return td
 }
 
@@ -127,6 +128,7 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 		td = &templateDataBoards{}
 	}
 	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
 	return td
 }
 
@@ -136,6 +138,7 @@ func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Req
 		td = &templateDataPlayer{}
 	}
 	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
 	return td
 }
 

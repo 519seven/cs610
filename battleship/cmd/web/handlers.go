@@ -180,8 +180,9 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("carrier_status: ", carrier_status, "| battleship_status: ", battleship_status, 
 		"| cruiser_status: ", cruiser_status, "| submarine_status: ", submarine_status, 
-		"| destroyer_status: ", destroyer_status)	// remove after debugging
+		"| destroyer_status: ", destroyer_status)	// debugging
 
+	app.session.Put(r, "flash", "Board successfully created!")
 	// Send user back to list of boards
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
@@ -217,7 +218,7 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 // list boards
-func (app *application) listBoard(w http.ResponseWriter, r *http.Request) {
+func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	// the userID should be in a session somewhere
 	userID := 1
 	if userID < 1 {
