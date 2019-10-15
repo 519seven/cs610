@@ -10,7 +10,8 @@ _oauth2creds
 .__*
 web
 *.db
-
+tls/
+ui/static/lines
 # Test binary, build with `go test -c`
 *.test
 
