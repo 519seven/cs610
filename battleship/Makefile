@@ -16,9 +16,15 @@ GO113GET=$(GO113CMD) get
 BINARY_NAME=battleship
 BINARY_UNIX=$(BINARY_NAME)_unix
 
-all: setup build
+all: setup cert build
 build: 
-		$(GO113BUILD) -o $(BINARY_NAME) -v ./cmd/web 
+		$(GO113BUILD) -o $(BINARY_NAME) -v ./cmd/web
+		$(info 	Your battle awaits you!  Run ./battleship (-h for more info))
+		$(info  ------------------ Remember to use HTTPS ------------------)
+		
+cert:
+		set -e; ./gen_cert.sh
+
 clean: 
 		$(GO113CLEAN)
 		rm -f $(BINARY_NAME)

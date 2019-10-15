@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CURDIR=$(shell pwd)
+CURDIR=$(pwd)
 
 # Try # 1
 #mkdir -p ~/go/go1.13.1
@@ -19,15 +19,22 @@ CURDIR=$(shell pwd)
 export OLDGOROOT=$GOROOT && printf "Saved your old GOROOT ($GOROOT) in OLDGOROOT in case you needed that\n"
 unset GOROOT && printf "unsetting GOROOT\n"
 export OLDGOPATH=$GOPATH && printf "Saved your old GOPATH ($GOPATH) in OLDGOPATH in case you needed that\n"
-export GOPATH=$(CURDIR)/go && printf "Set GOPATH to $GOPATH\n"
+export GOPATH=$CURDIR/go && printf "Set GOPATH to $GOPATH\n"
 export PATH=$PATH:$GOPATH/bin && printf "Updating PATH to $PATH\n"
-rc=$(go get golang.org/dl/go1.13)
-if [[ $rc -eq 0 ]]; then
-  printf "Getting go1.13\n"
-  go1.13 download
+printf "Checking for go1.13\n"
+which go1.13
+if [[ $? -ne 0 ]]; then
+  printf "go1.13 not found.  Setting up...\n"
+  rc="$(go get golang.org/dl/go1.13 2>&1 > /dev/null)"
+  if [[ $rc == *"permission denied"* ]]; then
+    printf "Getting go1.13\n"
+    go1.13 download
+  else
+    [[ ! -z $err_msg ]] && printf "Error encountered: $err_msg"
+    printf "Failure to get go1.13\nI am unsure how to continue :(\n"
+    exit 1
+  fi
 else
-  printf "Failure to get go1.13\nI am unsure how to continue :(\n"
-  exit 1
+  printf "go1.13 is already installed\nSwitching control back to make setup\n"
 fi
-
 

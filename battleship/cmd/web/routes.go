@@ -31,7 +31,7 @@ func (app *application) routes() http.Handler {
 	// BOARDS
 	mux.Post("/board/create", dynamicMiddleware.ThenFunc(app.createBoard))			// save board info
 	mux.Get("/board/create", dynamicMiddleware.ThenFunc(app.createBoardForm))		// display board if GET
-	mux.Get("/board/list", dynamicMiddleware.ThenFunc(app.listBoard))
+	mux.Get("/board/list", dynamicMiddleware.ThenFunc(app.listBoards))
 	mux.Get("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
 	mux.Get("/board/:id", dynamicMiddleware.ThenFunc(app.displayBoard))
 	// PLAYERS

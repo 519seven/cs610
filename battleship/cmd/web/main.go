@@ -40,7 +40,7 @@ type application struct {
 // -----------------------------------------------------------------------------
 // main
 func main() {
-	port := flag.String("port", ":5033", "HTTP port on which to listen")
+	port := flag.String("port", ":5033", "HTTPS port on which to listen")
 	dsn := flag.String("dsn", "./battleship.db", "SQLite data source name")
 	initdb := flag.Bool("initialize", false, "Start with a fresh database")
 	secret := flag.String("secret", "nquR81XagSrAEHYXJSFw8y2PLbyWlF1Z", "Secret key")
@@ -85,7 +85,9 @@ func main() {
 		Handler:  app.routes(),
 	}
 
-	infoLog.Printf("Starting server on %s", *port)
-	err = srv.ListenAndServe()
+	infoLog.Printf("Starting HTTPS server on %s", *port)
+	// Start the HTTPS server, pass in the paths to the TLS cert
+	//  and corresponding private key
+	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	errorLog.Fatal(err)
 }
