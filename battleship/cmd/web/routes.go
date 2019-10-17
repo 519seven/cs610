@@ -41,18 +41,14 @@ func (app *application) routes() http.Handler {
 	mux.Get("/player/update/:id", dynamicMiddleware.ThenFunc(app.updatePlayer))
 	mux.Get("/player/:id", dynamicMiddleware.ThenFunc(app.displayPlayer))
 	// POSITIONS
-	/*
-		mux.HandleFunc("/position", app.selectPosition)
-		mux.HandleFunc("/position/create", app.createPosition)
-		mux.HandleFunc("/position/list", app.listPosition)
-		// no update needed
-	*/
+	mux.Get("/position/update/:id", dynamicMiddleware.ThenFunc(app.updatePosition))
 	// SHIPS
 	/*
 		mux.HandleFunc("/ship", app.selectShip)
 		mux.HandleFunc("/ship/list", app.listShip)
 	*/
 	// AUTH
+	mux.Get("/login", dynamicMiddleware.ThenFunc(app.login))
 	mux.Post("/logout", http.HandlerFunc(app.logout))
 	/*
 		mux.HandleFunc("/user/create", app.createUser)
