@@ -1,0 +1,27 @@
+{{template "base" .}}
+
+{{define "title"}}Register{{end}}
+{{define "main"}}
+<form action='/signup' method='POST'>
+    {{with .Form}}
+    <div>
+        <label>Register as a New User</label>
+    </div>
+    <div>
+        <label>Screen Name:</label>
+        {{with .Errors.Get "screenName"}}
+            <label class='error'>{{.}}</label><br/>
+        {{end}}
+        <input type='text' maxlength=16 size=18 name="screenName" value='{{.Get "screenName"}}'></td>
+        <label>E-mail Address:</label>
+        {{with .Errors.Get "emailAddress"}}
+            <label class='error'>{{.}}</label><br/>
+        {{end}}
+        <td><input type='text' name='emailAddress' maxlength=35 size=35 value='{{.Get "emailAddress"}}'></td>
+    </div>
+    <div>
+        <input type='submit' value='Register'>
+    </div>
+    {{end}}
+</form>
+{{end}}

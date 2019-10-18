@@ -1,0 +1,49 @@
+// /\\//\\//\\//\\//\\//\\//\\//\\ //
+// ** Copyright Peter Akey 2019 ** //
+// This is my  project as a result //
+// of  following the  web building //
+// book entitled                   //
+//           Let's Go              //
+//             - by Alex Edwards   //
+// One of  the  best lessons ever! //
+// The instrucion manual was a how // 
+// -to for building a safe and fun //
+// -ctional Go  site  for  holding //
+// snippets.  It  was  altered for //
+// a game of battleship.  Ultimate //
+// -ly the goal is to  expand this //
+// into a multi-player, multi-leve //
+// -l game of battleship.  In this //
+// case, the  "levels"  pertain to //
+// refinement of the web applicati //
+// -on.  This was my first Go proj //
+// -ect.  The assignment was to bu //
+// -ild a server/client program to //
+// learn about  security concepts. //
+// I learned a lot about Go and ev //
+// -en more about the security con //
+// -sidersations in regards to thi //
+// -gs like cross -site scripting, //
+// HMAC  for protecting form data, //
+// HTML Escaping for cleansing use //
+// -r input and output, security h //
+// eaders to prevent XSS and click //
+// -jacking, middleware to "proxy" //
+// control to an additional compon //
+// -ent for custom processing such //
+// as error  handling, forward sec //
+// -recy  for  using newer  cipher //
+// suites,  protecting  one's self //
+// from Slolaris  by limiting your //
+// ReadTimeout setting,  Makefile, //
+// SQLITE3,  third-party  modules, //
+// etc. My goal was to capture the //
+// spirit of the type of power the //
+// -se security holes present to a //
+// business and what they looked l //
+// -ike  using  an  actual applica //
+// -tion with a complete web inter //
+// -face for the client and a serv //
+// -er component for the back end. //
+// CS610 - Networking and Security //
+// /\\//\\//\\//\\//\\//\\//\\//\\ //

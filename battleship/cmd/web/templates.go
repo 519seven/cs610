@@ -33,12 +33,31 @@ type templateDataBoards struct {
 	Board					*models.Board
 	Boards					[]*models.Board
 }
+type templateDataLogin struct {
+	CurrentYear 			int
+	Flash					string
+	Form					*forms.Form
+	Login      				*models.Login
+}
 type templateDataPlayer struct {
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
 	Player      			*models.Player
 	Players     			[]*models.Player
+}
+type templateDataPlayers struct {
+	CurrentYear 			int
+	Flash					string
+	Form					*forms.Form
+	Player      			*models.Player
+	Players     			[]*models.Player
+}
+type templateDataSignup struct {
+	CurrentYear 			int
+	Flash					string
+	Form					*forms.Form
+	Signup      			*models.Signup
 }
 type templateDataPosition struct {
 	CurrentYear 			int

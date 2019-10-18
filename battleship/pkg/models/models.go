@@ -6,28 +6,41 @@ import (
 	"time"
 )
 
-var ErrNoRecord = errors.New("models: no matching record found")
+var (
+	ErrNoRecord = errors.New("models: no matching record found")
+	ErrInvalidCredentials = errors.New("models: invalid credentials")
+	ErrDuplicateEmail = errors.New("models: duplicate email")
+)
 
 type Battle struct {
-	ID        int
-	Player1ID int
-	Player2ID int
-	Turn      int
+	ID        		int
+	Player1ID 		int
+	Player2ID 		int
+	Turn      		int
 }
 
 type Board struct {
-	ID      int
-	Title   string
-	OwnerID int
-	GameID  sql.NullInt64
-	Created time.Time
+	ID      		int
+	Title   		string
+	OwnerID 		int
+	GameID  		sql.NullInt64
+	Created 		time.Time
+}
+
+type Login struct {
+	ID         		int
+	ScreenName 		string
+	IsActive   		sql.NullString
+	LastLogin  		time.Time
 }
 
 type Player struct {
-	ID         int
-	ScreenName string
-	IsActive   sql.NullString
-	LastLogin  time.Time
+	ID         		int
+	EmailAddress	string
+	HashedPassword	string
+	ScreenName 		string
+	IsActive   		sql.NullString
+	LastLogin  		time.Time
 }
 
 type Position struct {
@@ -38,12 +51,6 @@ type Position struct {
 	CoordX			int
 	CoordY			string
 	PinColor		int
-}
-
-type Ship struct {
-	ID     int
-	Length int
-	Title  string
 }
 
 type PositionsOnBoard struct {
@@ -58,4 +65,17 @@ type PositionsOnBoard struct {
 	CoordX			int
 	CoordY			string
 	PinColor		int
+}
+
+type Signup struct {
+	ID         		int
+	ScreenName 		string
+	IsActive   		sql.NullString
+	LastLogin  		time.Time
+}
+
+type Ship struct {
+	ID     			int
+	Length 			int
+	Title  			string
 }

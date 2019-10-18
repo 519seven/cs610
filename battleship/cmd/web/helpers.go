@@ -38,25 +38,26 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	}
 	// create the tables if they don't exist
 	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS Battles 
-		(id INTEGER PRIMARY KEY, player1ID INTEGER, player2ID INTEGER, turn INTEGER)`)
+		(player1ID INTEGER, player2ID INTEGER, turn INTEGER)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
-		(id INTEGER PRIMARY KEY, boardName TEXT, userID INTEGER, gameID INTEGER, 
+		(boardName TEXT, userID INTEGER, gameID INTEGER, 
 		 created DATETIME DEFAULT CURRENT_TIMESTAMP)`)
 	stmt.Exec()
+	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Players 
+		(screenName TEXT, emailAddress TEXT NOT NULL UNIQUE, 
+		 hashedPassword TEXT, created DATETIME, isActive BOOLEAN, 
+		 lastLogin DATETIME)`)
+	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Positions 
-		(id INTEGER PRIMARY KEY, boardID INTEGER, shipID INTEGER, 
+		(boardID INTEGER, shipID INTEGER, 
 		 userID INTEGER, coordX INTEGER, coordY TEXT, pinColor TEXT)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Ships 
-		(id INTEGER PRIMARY KEY, shipType TEXT, shipLength INTEGER)`)
+		(shipType TEXT, shipLength INTEGER)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`INSERT INTO Ships (shipType, shipLength) VALUES 
 		('carrier', 5), ('battleship', 4), ('cruiser', 3), ('submarine', 3), ('destroyer', 2)`)
-	stmt.Exec()
-	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Users 
-		(id INTEGER PRIMARY KEY, screenName TEXT, isActive BOOLEAN, 
-		 lastLogin DATETIME)`)
 	stmt.Exec()
 
 	return db, nil
@@ -132,6 +133,16 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	return td
 }
 
+// add default data to login screens
+func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Request) *templateDataLogin {
+	if td == nil {
+		td = &templateDataLogin{}
+	}
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	return td
+}
+
 // add default data to player info screens
 func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Request) *templateDataPlayer {
 	if td == nil {
@@ -142,7 +153,29 @@ func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Req
 	return td
 }
 
-// cache templates for Board
+// add default data to player info screens
+func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.Request) *templateDataPlayers {
+	if td == nil {
+		td = &templateDataPlayers{}
+	}
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	return td
+}
+
+// add default data to signup screens
+func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Request) *templateDataSignup {
+	if td == nil {
+		td = &templateDataSignup{}
+	}
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	return td
+}
+
+// Cache
+// ----------------------------------------------------------------------------
+// Board
 func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoard) {
 	ts, ok := app.templateCache[name]
 	if !ok {
@@ -180,8 +213,28 @@ func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, nam
 	buf.WriteTo(w)
 }
 
-// cache templates for Players
-func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayer) {
+// cache templates for Login
+func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name string, td *templateDataLogin) {
+	// retrieve based on page name or call serverError helper
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataLogin(td, r))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)
+}
+
+// cache templates for Player
+func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayer) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
 	if !ok {
@@ -193,6 +246,46 @@ func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, na
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
 	err := ts.Execute(buf, app.addDefaultDataPlayer(td, r))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)
+}
+
+// cache templates for Players
+func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayers) {
+	// retrieve based on page name or call serverError helper
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataPlayers(td, r))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)
+}
+
+// cache templates for Signup
+func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, name string, td *templateDataSignup) {
+	// retrieve based on page name or call serverError helper
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataSignup(td, r))
 	if err != nil {
 		app.serverError(w, err)
 		return

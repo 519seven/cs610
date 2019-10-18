@@ -1,0 +1,28 @@
+{{template "base" .}}
+
+{{define "title"}}Create a New Account{{end}}
+
+{{define "main"}}
+<form action='/updatePlayer' method='POST'>
+	{{with .Player}}
+	<div>
+		<label>Screen Name</label>
+		{{with .Errors.Get "screenName"}}
+			<label class='error'>{{.}}</label>
+		{{end}}
+		<input type=text size=32 name=screenName maxlength=32 value='{{.ScreenName}}'>
+		<label>E-mail Address</label>
+		{{with .Errors.Get "emailAddress"}}
+			<label class='error'>{{.}}</label>
+		{{end}}
+		<input type=text size=52 name=emailAddress maxlength=52 value='{{.EmailAddress}}'>
+		<label>Password (max length 32)</label>
+		{{with .Errors.Get "password"}}
+			<label class='error'>{{.}}</label>
+		{{end}}
+		<input type=password size=32 name=password maxlength=32 value=''>
+		<input type=submit name="Update Player">
+	</div>
+	{{end}}
+</form>
+{{end}}

@@ -12,7 +12,86 @@ import (
 	"strings"
 )
 
-// landing page
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// Auth
+
+// display new player form
+func (app *application) getSignupForm(w http.ResponseWriter, r *http.Request) {
+	app.renderSignup(w, r, "signup.page.tmpl", &templateDataSignup {
+		Form: forms.New(nil),
+	})
+}
+
+// create a new player - submit signup form (POST)
+func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
+	// Create a new forms.Form struct containing the POSTed data from the
+	//  form, then use the validation methods to check the content.
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+	form := forms.New(r.PostForm)
+	form.Required("screenName")
+	form.MaxLength("screenName", 16)
+	form.Required("emailAddress")
+	form.MaxLength("emailAddress", 55)
+	form.Required("password")
+	form.MaxLength("password", 55)
+	form.Required("passwordConf")
+	form.MaxLength("passwordConf", 55)
+
+	// If our validation has failed anywhere along the way, bail
+	if !form.Valid() {
+		app.renderSignup(w, r, "signup.page.tmpl", &templateDataSignup {
+			Form: form,
+		})
+		return
+	}
+
+	screenName := r.PostForm.Get("screenName")
+	emailAddress := r.PostForm.Get("emailAddress")
+	password := r.PostForm.Get("password")
+
+	rowid, err := app.players.Insert(screenName, emailAddress, password)
+	if err != nil || rowid == 0 {
+		app.serverError(w, err)
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("/player/%d", rowid), http.StatusSeeOther)
+}
+
+// display login form
+func (app *application) loginForm(w http.ResponseWriter, r *http.Request) {
+	app.renderLogin(w, r, "login.page.tmpl", &templateDataLogin {
+		Form: forms.New(nil),
+	})
+}
+
+// login player
+func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
+	screenName := r.URL.Query().Get("screenName")
+	emailAddress := r.URL.Query().Get("emailAddress")
+	password := r.URL.Query().Get("password")
+	rowid, err := app.players.Insert(screenName, emailAddress, password)
+	if err != nil || rowid == 0 {
+		app.serverError(w, err)
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("/board/list", rowid), http.StatusSeeOther)
+}
+
+// log out
+func (app *application) postLogout(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, fmt.Sprintf("/"), http.StatusSeeOther)
+}
+
+// End Auth
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// Home
+
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	// write board data
 	files := []string{
@@ -36,6 +115,8 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	buf.WriteTo(w)
 }
 
+// End Home
+// ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // Boards
 
@@ -97,8 +178,8 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 				//gameID := r.URL.Query().Get("gameID")
 				// userID should be gotten from somewhere else
 				//userID = r.PostForm("userID")
-				fmt.Println("Getting the value at", "shipXY_"+rowStr+"_"+colStr)
-				fmt.Println("That value is", shipXY)
+				//fmt.Println("Getting the value at", "shipXY_"+rowStr+"_"+colStr)
+				//fmt.Println("That value is", shipXY)
 				switch strings.ToUpper(shipXY) {
 				case "C":
 					carrier = append(carrier, rowStr+","+colStr)
@@ -261,26 +342,10 @@ func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/board/display/%d", id), http.StatusSeeOther)
 }
 
+// End Boards
+// -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // Players
-
-// create a new player
-func (app *application) createPlayer(w http.ResponseWriter, r *http.Request) {
-	// restrict this handler to HTTP POST methods only
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
-	screenName := r.URL.Query().Get("screenName")
-	id, err := app.players.Insert(screenName)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	http.Redirect(w, r, fmt.Sprintf("/player/list/%d", id), http.StatusSeeOther)
-}
 
 // display player
 func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
@@ -306,13 +371,13 @@ func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.renderPlayers(w, r, "players.page.tmpl", &templateDataPlayer{
+	app.renderPlayer(w, r, "player.page.tmpl", &templateDataPlayer{
 		Player: s,
 	})
 }
 
 // list players
-func (app *application) listPlayer(w http.ResponseWriter, r *http.Request) {
+func (app *application) listPlayers(w http.ResponseWriter, r *http.Request) {
 	// the userID should be in a session somewhere
 	userID := 123
 	if userID < 1 {
@@ -328,12 +393,12 @@ func (app *application) listPlayer(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	app.renderPlayers(w, r, "players.page.tmpl", &templateDataPlayer{
+	app.renderPlayers(w, r, "players.page.tmpl", &templateDataPlayers{
 		Players: s,
 	})
 }
 
-// update player (POST or GET???)
+// update player
 func (app *application) updatePlayer(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	screenName := r.URL.Query().Get("boardName")
@@ -342,13 +407,37 @@ func (app *application) updatePlayer(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("/player/display/%d", id), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/player/%d", id), http.StatusSeeOther)
 }
 
+// End Players
+// ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-// Auth
+// Position
 
-// Log out
-func (app *application) logout(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, fmt.Sprintf("/"), http.StatusSeeOther)
+// update a position's pinColor
+func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
+	boardID, err := strconv.Atoi(r.URL.Query().Get("boardID"))	// get from session?
+	if err != nil {
+		app.serverError(w, err)
+	}
+	shipXY := r.URL.Query().Get("shipXY")						// get from board form
+	playerID := 1												// get from session??
+	coordX, err := strconv.Atoi(shipXY[len(shipXY)-2:])			// get the second-to-last character
+	if err != nil {
+		app.serverError(w, err)
+	}
+	coordY := shipXY[len(shipXY)-1:]							// get the last character
+	pinColor := 1												// if it's 1 then 0; if it's 0 then 1
+	rowid, err := app.positions.Update(boardID, playerID, coordX, coordY, pinColor)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	fmt.Fprintln(w, "Position (id #%d) has been updated...", rowid)
+	//http.Redirect(w, r, fmt.Sprintf("/player/list/%d", id), http.StatusSeeOther)
 }
+
+// End Position
+// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------

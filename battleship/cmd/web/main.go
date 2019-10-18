@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"html/template"
 	"log"
@@ -15,14 +16,14 @@ import (
 // custom application struct
 // this makes objects available to our handlers
 type application struct {
-	errorLog      	*log.Logger
-	infoLog       	*log.Logger
 	battles       	*sqlite3.BattleModel
 	boards        	*sqlite3.BoardModel
+	errorLog      	*log.Logger
+	infoLog       	*log.Logger
+	players       	*sqlite3.PlayerModel
 	positions     	*sqlite3.PositionModel
 	session			*sessions.Session
 	ships         	*sqlite3.ShipModel
-	players       	*sqlite3.PlayerModel
 	templateCache 	map[string]*template.Template
 }
 
@@ -67,22 +68,47 @@ func main() {
 	session.Lifetime = 12 * time.Hour
 
 	// new instance of application containing dependencies
+	// some are sql.<models> instances
 	app := &application{
-		errorLog:      	errorLog,
-		infoLog:       	infoLog,
 		battles:       	&sqlite3.BattleModel{DB: db},
 		boards:        	&sqlite3.BoardModel{DB: db},
+		errorLog:      	errorLog,
+		infoLog:       	infoLog,
 		players:       	&sqlite3.PlayerModel{DB: db},
 		positions:     	&sqlite3.PositionModel{DB: db},
 		session:		session,
 		ships:         	&sqlite3.ShipModel{DB: db},
 		templateCache: 	templateCache,
 	}
+	// Struct to hold non-default TLS settings
+	tlsConfig := &tls.Config {
+		PreferServerCipherSuites: 	true,				// ignored if TLS 1.3 is negotiated
+		CurvePreferences:			[]tls.CurveID{tls.X25519, tls.CurveP256},
+		CipherSuites: []uint16 {
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, 
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, 
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305, 
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305, 
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+		MinVersion: tls.VersionTLS12,
+		MaxVersion: tls.VersionTLS13,
+	}
 
 	srv := &http.Server{
-		Addr:     *port,
-		ErrorLog: errorLog,
-		Handler:  app.routes(),
+		Addr:     		*port,
+		ErrorLog: 		errorLog,
+		Handler:  		app.routes(),
+		TLSConfig: 		tlsConfig,			// tslConfig defined above
+		IdleTimeout:	time.Minute,		// Keep-alives on accepted connections prevent
+		ReadTimeout: 	5 * time.Second,	//  having to repeat the handshake, but 
+		WriteTimeout: 	10 * time.Second,	//  idle connections need to be closed
+		MaxHeaderBytes:	520192,				// Short ReadTimeout helps prevent against 
+											//  slow-client attacks - Slowloris
+											// WriteTimeout prevents the data that the 
+											//  handler returns from taking too long to write.
+											//  It is not meant to prevent long-running handlers
 	}
 
 	infoLog.Printf("Starting HTTPS server on %s", *port)

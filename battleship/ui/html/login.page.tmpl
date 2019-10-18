@@ -1,0 +1,27 @@
+{{template "base" .}}
+
+{{define "title"}}Welcome to Battleship!{{end}}
+{{define "main"}}
+<form action='/postLogin' method='POST'>
+    {{with .Form}}
+    <div>
+        <label>Login</label>
+    </div>
+    <div>
+        <label>Screen Name:</label>
+        {{with .Errors.Get "screenName"}}
+            <label class='error'>{{.}}</label><br/>
+        {{end}}
+        <input type='text' maxlength=16 size=18 name="screenName" value='{{.Get "screenName"}}'>
+        <label>Password:</label>
+        {{with .Errors.Get "password"}}
+            <label class='error'>{{.}}</label><br/>
+        {{end}}
+        <input type='password' name='password' maxlength=35 size=35 value=''>
+    </div>
+    <div>
+        <input type='submit' value='Login'>
+    </div>
+    {{end}}
+</form>
+{{end}}
