@@ -6,7 +6,7 @@ GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 
 # Go 1.13.1 commands
-GO113CMD=~/go/bin/go1.13
+GO113CMD=go/bin/go
 GO113BUILD=$(GO113CMD) build
 GO113CLEAN=$(GO113CMD) clean
 GO113TEST=$(GO113CMD) test
