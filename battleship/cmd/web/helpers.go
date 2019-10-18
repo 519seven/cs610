@@ -46,8 +46,8 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Players 
 		(screenName TEXT, emailAddress TEXT NOT NULL UNIQUE, 
-		 hashedPassword TEXT, created DATETIME, isActive BOOLEAN, 
-		 lastLogin DATETIME)`)
+		 hashedPassword TEXT, created DATETIME, 
+		 loggedIn BOOLEAN, inBattle BOOLEAN, lastLogin DATETIME)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Positions 
 		(boardID INTEGER, shipID INTEGER, 
