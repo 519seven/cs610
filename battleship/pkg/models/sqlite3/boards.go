@@ -38,25 +38,28 @@ func getNextChar(character string, maxCharacters uint) byte {
 	return 'z'
 }
 func matchFound(coordinates string, stringOfCoords string) bool {
-	fmt.Println("Looking for ", coordinates)
+	//fmt.Println("Looking for ", coordinates)
 	if strings.Contains(stringOfCoords, coordinates) {
 		return true
 	}
 	return false
 }
 
-// Create the actual board entry in the Boards table, return the boardID
+// Create a board if one with the same name doesn't already exist (belonging to this user)
 func (m *BoardModel) Create(boardName string) (int, error) {
 	var boardID int64
-	userID := 1 // get from secure location
+	userID := 1 												// get from secure location
 	// first check to make sure a board with the same name doesn't already exist
-	stmt := `SELECT id FROM BOARDS WHERE boardName = ? AND userID = ?`
+	stmt := `SELECT rowid FROM BOARDS WHERE boardName = ? AND userID = ?`
 	err := m.DB.QueryRow(stmt, boardName, userID).Scan(boardID)
-	if err != nil {
+	if err != nil && err.Error() != "sql: no rows in result set" {
+		fmt.Println("[ERROR] Error encountered, returning to calling func:", err.Error())
 		return 0, err
 	} else if boardID > 0 {
+		fmt.Println("Found existing board, returning its id")
 		return int(boardID), nil
 	}
+	fmt.Println("Creating new board...")
 	stmt = `INSERT INTO Boards (boardName, userID) VALUES (?, ?)`
 	result, err := m.DB.Exec(stmt, boardName, userID)
 	if err != nil {
@@ -70,24 +73,17 @@ func (m *BoardModel) Create(boardName string) (int, error) {
 }
 
 // Get board info - name of board and the positions that have been saved on it
-func (m *BoardModel) Get(id int) (*models.PositionsOnBoard, error) {
-	//	stmt := `SELECT id, boardName, userID, gameID, created FROM Boards WHERE id = ?` // and userID = this user's ID
-
-	//	row := m.DB.QueryRow(stmt, id)
-
-	//	s := &models.Board{}
-	//	err := row.Scan(&s.ID, &s.Title, &s.OwnerID, &s.GameID, &s.Created)
-	// Get board info
-	stmt := `SELECT b.id as boardID, boardName, b.userID, gameID, created,
-		p.id as positionID, s.shipType, p.userID, p.coordX, p.coordY, p.pinColor
+func (m *BoardModel) Get(rowid int) (*models.PositionsOnBoard, error) {
+	stmt := `SELECT b.rowid as boardID, boardName, b.userID, gameID, created,
+		p.rowid as positionID, s.shipType, p.userID, p.coordX, p.coordY, p.pinColor
 		FROM Boards b
 		LEFT OUTER JOIN Positions p ON
-		p.boardID = b.ID 
+		p.boardID = b.rowid 
 		LEFT OUTER JOIN Ships s ON
-		s.id = p.shipID
-		WHERE b.id = ?` // and userID = this user's ID
+		s.rowid = p.shipID
+		WHERE b.rowid = ?` // and userID = this user's ID
 	p := &models.PositionsOnBoard{}
-	err := m.DB.QueryRow(stmt, id).Scan(&p.BoardID, &p.BoardName, &p.OwnerID, &p.GameID, &p.Created,
+	err := m.DB.QueryRow(stmt, rowid).Scan(&p.BoardID, &p.BoardName, &p.OwnerID, &p.GameID, &p.Created,
 		&p.PositionID, &p.ShipType, &p.UserID, &p.CoordX, &p.CoordY, &p.PinColor)
 	if err != nil {
 		if xerrors.Is(err, sql.ErrNoRows) {
@@ -127,20 +123,20 @@ func (m *BoardModel) Insert(boardID int, shipName string, arrayOfCoords []string
 	}
 	for _, rc := range arrayOfCoords {
 		s := strings.Split(rc, ",")
-		fmt.Println(s)
+		//fmt.Println(s)
 		row, col := s[0], s[1]
 		nxtR, _ := strconv.Atoi(row)
 		nextRow := strconv.Itoa(nxtR+1)
 		nextCol := string(getNextChar(col, 10))
-		// is the next column in the slice?
 		if (searchDirection == "initialize" || searchDirection == "row") && numberOfFathomsRemaining > 0 && matchFound(row+","+nextCol, strings.Join(arrayOfCoords, " ")) {
-			fmt.Println("match found in the next column: ", row+"|"+nextCol, "searching this row only")
+			// is the next column in the slice?
+			//fmt.Println("match found in the next column: ", row+"|"+nextCol, "searching this row only")
 			searchDirection = "row"
 			numberOfFathomsRemaining -= 1
 		}
 		if (searchDirection == "initialize" || searchDirection == "column") && numberOfFathomsRemaining > 0 && matchFound(nextRow+","+col, strings.Join(arrayOfCoords, " ")) {
 			// is the next row in the slice?
-			fmt.Println("match found in the next row: ", nextRow+"|"+col, "searching this column only")
+			//fmt.Println("match found in the next row: ", nextRow+"|"+col, "searching this column only")
 			searchDirection = "column"
 			numberOfFathomsRemaining -= 1
 		}
@@ -157,7 +153,7 @@ func (m *BoardModel) Insert(boardID int, shipName string, arrayOfCoords []string
 	//  we have a boardID, userID, shipName, and a bunch of coordinates
 	// Get shipID
 	var shipID int
-	stmt := "SELECT id FROM Ships WHERE shipType = ? LIMIT 1"
+	stmt := "SELECT rowid FROM Ships WHERE shipType = ? LIMIT 1"
 	rows, err := m.DB.Query(stmt, shipName)
 	if err != nil {
 		// Can't move forward without a shipID...Not sure we want to guess what it could be, either
@@ -183,12 +179,12 @@ func (m *BoardModel) Insert(boardID int, shipName string, arrayOfCoords []string
 	}
 	err = rows.Err()
 	if err != nil {
-		fmt.Println("Fatal [ERROR]:", err)
+		fmt.Println("[FATAL]:", err)
 	}
 	// Save the coordinates and return to calling function
 	for _, rc := range arrayOfCoords {
 		s := strings.Split(rc, ",")
-		fmt.Println(s)
+		//fmt.Println(s)
 		row, col := s[0], s[1]
 		colStr := string(col)
 		stmt := "INSERT INTO Positions (boardID, shipID, userID, coordX, coordY, pinColor) VALUES (?, ?, ?, ?, ?, ?)"
@@ -196,13 +192,14 @@ func (m *BoardModel) Insert(boardID int, shipName string, arrayOfCoords []string
 		if err != nil {
 			fmt.Println("[ERROR] inserting position: ", err, boardID, shipName, userID, row, colStr)
 		}
+		//fmt.Println("[INFO] inserted positions into board with id=", boardID)
 	}
 	// Return
-	fmt.Println("Return control back to displayBoards (list)")
+	fmt.Println("Done with", shipName, "\nReturning control back to createBoard")
 	return 0, nil
 }
 func (m *BoardModel) List(userID int) ([]*models.Board, error) {
-	stmt := `SELECT id, boardName, userID, gameID, created FROM Boards 
+	stmt := `SELECT rowid, boardName, userID, gameID, created FROM Boards 
 	WHERE userID = ?
 	ORDER BY created DESC LIMIT 10`
 
@@ -240,13 +237,13 @@ func (m *BoardModel) List(userID int) ([]*models.Board, error) {
 		}
 	*/
 }
-func (m *BoardModel) Update(id int, boardName string, userID int, gameID int) (int, error) {
+func (m *BoardModel) Update(rowid int, boardName string, userID int, gameID int) (int, error) {
 	// to split over multpile lines, use backquotes not double quotes
-	stmt := `UPDATE Boards SET boardName = ?, userID = ?, gameID= ? WHERE id = ?`
-	_, err := m.DB.Exec(stmt, boardName, userID, gameID, id)
+	stmt := `UPDATE Boards SET boardName = ?, userID = ?, gameID= ? WHERE rowid = ?`
+	_, err := m.DB.Exec(stmt, boardName, userID, gameID, rowid)
 	if err != nil {
 		return 0, err
 	}
-	// id has type int64; convert to int type before returning
-	return int(id), nil
+	// rowid has type int64; convert to int type before returning
+	return int(rowid), nil
 }

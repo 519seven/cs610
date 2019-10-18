@@ -1,6 +1,6 @@
 {{template "base" .}}
 
-{{define "title"}}Create a New Board{{end}}
+{{define "title"}}Battleship - New Board{{end}}
 {{define "main"}}
 <form action='/board/create' method='POST'>
     {{with .Form}}
@@ -78,7 +78,7 @@
                         <tr>
                             <td>{{$row}}</td>
                         {{- range $col := iterateColumns 10}}
-                            <td><input type='text' maxlength=1 size=12 name="shipXY{{$row}}{{$col}}" value=""></td>
+                            <td><input type='text' maxlength=1 size=6 name="shipXY{{$row}}{{$col}}" value=""></td>
                         {{- end}}
                         </tr>
                     {{- end}}

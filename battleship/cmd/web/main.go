@@ -16,14 +16,14 @@ import (
 // custom application struct
 // this makes objects available to our handlers
 type application struct {
-	errorLog      	*log.Logger
-	infoLog       	*log.Logger
 	battles       	*sqlite3.BattleModel
 	boards        	*sqlite3.BoardModel
+	errorLog      	*log.Logger
+	infoLog       	*log.Logger
+	players       	*sqlite3.PlayerModel
 	positions     	*sqlite3.PositionModel
 	session			*sessions.Session
 	ships         	*sqlite3.ShipModel
-	players       	*sqlite3.PlayerModel
 	templateCache 	map[string]*template.Template
 }
 
@@ -68,11 +68,12 @@ func main() {
 	session.Lifetime = 12 * time.Hour
 
 	// new instance of application containing dependencies
+	// some are sql.<models> instances
 	app := &application{
-		errorLog:      	errorLog,
-		infoLog:       	infoLog,
 		battles:       	&sqlite3.BattleModel{DB: db},
 		boards:        	&sqlite3.BoardModel{DB: db},
+		errorLog:      	errorLog,
+		infoLog:       	infoLog,
 		players:       	&sqlite3.PlayerModel{DB: db},
 		positions:     	&sqlite3.PositionModel{DB: db},
 		session:		session,

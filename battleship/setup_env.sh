@@ -35,6 +35,6 @@ if [[ $? -ne 0 ]]; then
     exit 1
   fi
 else
-  printf "go1.13 is already installed\Passing control back to make setup\n"
+  printf "go1.13 is already installed\nPassing control back to make setup\n"
 fi
 

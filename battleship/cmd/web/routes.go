@@ -35,9 +35,7 @@ func (app *application) routes() http.Handler {
 	mux.Get("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
 	mux.Get("/board/:id", dynamicMiddleware.ThenFunc(app.displayBoard))
 	// PLAYERS
-	mux.Post("/player/create", dynamicMiddleware.ThenFunc(app.createPlayer))		// save player info
-	mux.Get("/player/create", dynamicMiddleware.ThenFunc(app.createPlayer))			// display form if GET
-	mux.Get("/player/list", dynamicMiddleware.ThenFunc(app.listPlayer))
+	mux.Get("/player/list", dynamicMiddleware.ThenFunc(app.listPlayers))
 	mux.Get("/player/update/:id", dynamicMiddleware.ThenFunc(app.updatePlayer))
 	mux.Get("/player/:id", dynamicMiddleware.ThenFunc(app.displayPlayer))
 	// POSITIONS
@@ -48,13 +46,13 @@ func (app *application) routes() http.Handler {
 		mux.HandleFunc("/ship/list", app.listShip)
 	*/
 	// AUTH
-	mux.Get("/login", dynamicMiddleware.ThenFunc(app.login))
-	mux.Post("/logout", http.HandlerFunc(app.logout))
-	/*
-		mux.HandleFunc("/user/create", app.createUser)
-		mux.HandleFunc("/user/list", app.listUser)
-		mux.HandleFunc("/user/update", app.updateUser)
-	*/
+	mux.Get("/signup", dynamicMiddleware.ThenFunc(app.getSignupForm))		// display form if GET
+	mux.Post("/signup", dynamicMiddleware.ThenFunc(app.postSignup))			// save player info
+	mux.Get("/login", dynamicMiddleware.ThenFunc(app.loginForm))
+	mux.Post("/login", dynamicMiddleware.ThenFunc(app.postLogin))
+	mux.Post("/logout", http.HandlerFunc(app.postLogout))
+	mux.Post("/updatePlayer", dynamicMiddleware.ThenFunc(app.updatePlayer))
+
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	// remove a specific prefix from the request's URL path
 	// before passing the request on to the file server

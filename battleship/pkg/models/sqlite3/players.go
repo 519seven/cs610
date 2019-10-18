@@ -3,7 +3,9 @@ package sqlite3
 import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 	"database/sql"
+	"fmt"
 	"golang.org/x/xerrors"
+	"strings"
 	"time"
 )
 
@@ -11,34 +13,47 @@ type PlayerModel struct {
 	DB *sql.DB
 }
 
-func (m *PlayerModel) Get(id int) (*models.Player, error) {
-	stmt := `SELECT id, screenName, lastLogin FROM Users WHERE id = ?`
+// authenticate player
+func (m *PlayerModel) Authenticate(email, password string) (int, error) {
+	return 0, nil
+}
+
+// get player information
+func (m *PlayerModel) Get(rowid int) (*models.Player, error) {
+	stmt := `SELECT rowid, screenName, emailAddress, lastLogin FROM Players WHERE rowid = ?`
 	s := &models.Player{}
-	err := m.DB.QueryRow(stmt, id).Scan(&s.ID, &s.ScreenName, &s.LastLogin)
+	err := m.DB.QueryRow(stmt, rowid).Scan(&s.ID, &s.ScreenName, &s.EmailAddress, &s.LastLogin)
 	if err != nil {
-		if xerrors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNoRecord
-		} else {
-			return nil, err
-		}
+		fmt.Println("[ERROR] Error encountered:", err.Error())
+		return nil, err
 	}
 	return s, nil
 }
-func (m *PlayerModel) Insert(screenName string) (int, error) {
-	stmt := `INSERT INTO Users (screenName, lastLogin) VALUES (?, ?)`
-	result, err := m.DB.Exec(stmt, screenName, time.Now())
+
+// insert new player
+func (m *PlayerModel) Insert(screenName string, emailAddress string, password string) (int, error) {
+	hashedPassword := "!Q@W#E$R%T^Y&U*I(O)P"
+	stmt := `INSERT INTO Players (screenName, emailAddress, hashedPassword, isActive, lastLogin) VALUES (?, ?, ?, ?, ?)`
+	result, err := m.DB.Exec(stmt, screenName, emailAddress, hashedPassword, 1, time.Now())
 	if err != nil {
-		return 0, err
+		fmt.Println(err.Error())
+		if strings.Contains(err.Error(), "UNIQUE constraint failed:") {
+			return 0, models.ErrDuplicateEmail
+		} else {
+			return 0, err
+		}
 	}
-	id, err := result.LastInsertId() // confirmed! sqlite3 driver has this functionality!
+	rowid, err := result.LastInsertId() // confirmed! sqlite3 driver has this functionality!
 	if err != nil {
 		return 0, err
 	}
 	// id has type int64; convert to int type before returning
-	return int(id), nil
+	return int(rowid), nil
 }
+
+// list players
 func (m *PlayerModel) List() ([]*models.Player, error) {
-	stmt := `SELECT id, screenName, isActive, lastLogin FROM Users`
+	stmt := `SELECT rowid, screenName, isActive, lastLogin FROM Players`
 	rows, err := m.DB.Query(stmt)
 	if err != nil {
 		return nil, err
@@ -61,9 +76,11 @@ func (m *PlayerModel) List() ([]*models.Player, error) {
 
 	return players, nil
 }
-func (m *PlayerModel) Update(id int, screenName string) (int, error) {
-	stmt := `UPDATE Users SET screenName = ?, lastLogin = ? WHERE id = ?`
-	_, err := m.DB.Exec(stmt, screenName, time.Now(), id)
+
+// update player
+func (m *PlayerModel) Update(id int, emailAddress string) (int, error) {
+	stmt := `UPDATE Players SET emailAddress = ?, lastLogin = ? WHERE rowid = ?`
+	_, err := m.DB.Exec(stmt, emailAddress, time.Now(), id)
 	if err != nil {
 		if xerrors.Is(err, sql.ErrNoRows) {
 			return id, models.ErrNoRecord
