@@ -7,8 +7,8 @@ GOPROGRAM=$go_program
 if [[ ! -d ./tls ]]; then
   mkdir -p tls
 fi  
+cd tls
 if [ ! -f cert.pem ] || [ ! -f key.pem ]; then
-  cd tls
   printf "Finding your home directory\n"
   homedir=$(getent passwd "$USER" | cut -d: -f6)
   printf "Using $homedir as your home directory\n"

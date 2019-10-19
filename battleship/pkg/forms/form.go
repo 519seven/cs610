@@ -8,7 +8,7 @@ import (
 	"unicode/utf8"
 )
 
-var EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+var EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 // Create a custom Form struct, which anonymously embeds a url.Values object
 // (to hold the form data) and an Errors field to hold any validation errors
@@ -24,18 +24,17 @@ func New(data url.Values) *Form {
 	errors(map[string][]string{}), }
 }
 
-// Implement a Required method to check that specific fields in the form
-//  data are present and not blank. If any fields fail this check, add the
-//  appropriate message to the form errors.
-func (f *Form) Required(fields ...string) {
-	for _, field := range fields {
-		value := f.Get(field)
-		if strings.TrimSpace(value) == "" {
-			f.Errors.Add(field, "This field cannot be blank")
-		}
+// Matches Pattern
+func (f *Form) MatchesPattern(field string, pattern *regexp.Regexp) {
+	value := f.Get(field)
+	if value == "" {
+		return
+	}
+	if !pattern.MatchString(value) {
+		f.Errors.Add(field, "This field is invalid")
 	}
 }
-	
+
 // Implement a MaxLength method to check that a specific field in the form
 //  contains a maximum number of characters. If the check fails then add the 
 //  appropriate message to the form errors.
@@ -55,19 +54,8 @@ func (f *Form) MinLength(field string, d int) {
 	if value == "" {
 		return
 	}
-	if utf8.RuneCountInString(value) > d {
+	if utf8.RuneCountInString(value) < d {
 		f.Errors.Add(field, fmt.Sprintf("This field is too short (minimum is %d characters)", d))
-	}
-}
-
-// Matches Pattern
-func (f *Form) MatchesPattern(field string, pattern *regexp.Regexp) {
-	value := f.Get(field)
-	if value == "" {
-		return
-	}
-	if !pattern.MatchString(value) {
-		f.Errors.Add(field, "This field is invalid")
 	}
 }
 
@@ -87,6 +75,18 @@ func (f *Form) PermittedValues(field string, opts ...string) {
 	f.Errors.Add(field, "This field is invalid")
 }
 
+// Implement a Required method to check that specific fields in the form
+//  data are present and not blank. If any fields fail this check, add the
+//  appropriate message to the form errors.
+func (f *Form) Required(fields ...string) {
+	for _, field := range fields {
+		value := f.Get(field)
+		if strings.TrimSpace(value) == "" {
+			f.Errors.Add(field, "This field cannot be blank")
+		}
+	}
+}
+	
 // Implement a RequiredNumberOfItems method to check that there are X number of
 //  coordinates for the specific ship
 func (f *Form) RequiredNumberOfItems(shipType string, requiredNumber int, countedNumber int) {

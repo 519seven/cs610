@@ -50,7 +50,7 @@ func (app *application) routes() http.Handler {
 	mux.Post("/signup", dynamicMiddleware.ThenFunc(app.postSignup))			// save player info
 	mux.Get("/login", dynamicMiddleware.ThenFunc(app.loginForm))
 	mux.Post("/login", dynamicMiddleware.ThenFunc(app.postLogin))
-	mux.Post("/logout", http.HandlerFunc(app.postLogout))
+	mux.Get("/logout", dynamicMiddleware.ThenFunc(app.postLogout))
 	mux.Post("/updatePlayer", dynamicMiddleware.ThenFunc(app.updatePlayer))
 
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
