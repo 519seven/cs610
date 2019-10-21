@@ -29,8 +29,8 @@ func (app *application) routes() http.Handler {
 	// Update routes to use the new dynamic middleware chain for our session middleware
 	
 	// BOARDS
-	mux.Post("/board/create", dynamicMiddleware.ThenFunc(app.createBoard))			// save board info
-	mux.Get("/board/create", dynamicMiddleware.ThenFunc(app.createBoardForm))		// display board if GET
+	mux.Post("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoard))			// save board info
+	mux.Get("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoardForm))		// display board if GET
 	mux.Get("/board/list", dynamicMiddleware.ThenFunc(app.listBoards))
 	mux.Get("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
 	mux.Get("/board/:id", dynamicMiddleware.ThenFunc(app.displayBoard))
@@ -50,7 +50,7 @@ func (app *application) routes() http.Handler {
 	mux.Post("/signup", dynamicMiddleware.ThenFunc(app.postSignup))			// save player info
 	mux.Get("/login", dynamicMiddleware.ThenFunc(app.loginForm))
 	mux.Post("/login", dynamicMiddleware.ThenFunc(app.postLogin))
-	mux.Post("/logout", http.HandlerFunc(app.postLogout))
+	mux.Get("/logout", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.postLogout))
 	mux.Post("/updatePlayer", dynamicMiddleware.ThenFunc(app.updatePlayer))
 
 	fileServer := http.FileServer(http.Dir("./ui/static/"))

@@ -14,6 +14,7 @@ type templateDataBattle struct {
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
+	IsAuthenticated			bool
 	Battle      			*models.Battle
 	Battles     			[]*models.Battle
 }
@@ -22,6 +23,7 @@ type templateDataBoard struct {
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
+	IsAuthenticated			bool
 	PositionsOnBoard       	*models.PositionsOnBoard
 	PositionsOnBoards      	[]*models.PositionsOnBoard
 }
@@ -30,6 +32,7 @@ type templateDataBoards struct {
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
+	IsAuthenticated			bool
 	Board					*models.Board
 	Boards					[]*models.Board
 }
@@ -37,12 +40,14 @@ type templateDataLogin struct {
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
+	IsAuthenticated			bool
 	Login      				*models.Login
 }
 type templateDataPlayer struct {
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
+	IsAuthenticated			bool
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
@@ -50,6 +55,7 @@ type templateDataPlayers struct {
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
+	IsAuthenticated			bool
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
@@ -57,12 +63,14 @@ type templateDataSignup struct {
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
+	IsAuthenticated			bool
 	Signup      			*models.Signup
 }
 type templateDataPosition struct {
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
+	IsAuthenticated			bool
 	Position    			*models.Position
 	Positions   			[]*models.Position
 }

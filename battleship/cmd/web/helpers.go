@@ -46,7 +46,7 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Players 
 		(screenName TEXT, emailAddress TEXT NOT NULL UNIQUE, 
-		 hashedPassword TEXT, created DATETIME, isActive BOOLEAN, 
+		 hashedPassword TEXT, created DATETIME, loggedIn BOOLEAN, 
 		 lastLogin DATETIME)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Positions 
@@ -113,6 +113,11 @@ func (app *application) checkRelationship(resourceID int) bool {
 	return true
 }
 
+// For Authorization
+func (app *application) isAuthenticated(r *http.Request) bool {
+	return app.session.Exists(r, "authenticatedUserID")
+}
+
 // add default data to create board interface
 func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Request) *templateDataBoard {
 	if td == nil {
@@ -120,6 +125,7 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	}
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
 	return td
 }
 
@@ -130,6 +136,7 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	}
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
 	return td
 }
 
@@ -140,6 +147,7 @@ func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Reque
 	}
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
 	return td
 }
 
@@ -150,6 +158,7 @@ func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Req
 	}
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
 	return td
 }
 
@@ -160,6 +169,7 @@ func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.R
 	}
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
 	return td
 }
 
@@ -170,6 +180,7 @@ func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Req
 	}
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
 	return td
 }
 

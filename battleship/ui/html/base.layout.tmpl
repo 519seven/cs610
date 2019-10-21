@@ -15,15 +15,23 @@
 		</header>
 		<nav>
 			<a href='/'>Home</a>
+			{{if .IsAuthenticated}}
 			<a href='/board/list'>Boards</a>
 			<a href='/player/list'>Active Players</a>
+			{{end}}
 		</nav>
 		<nav>
+			{{if not .IsAuthenticated}}
 			<a href='/signup'>Sign Up</a>
+			{{end}}
 			{{block "accountActions" .}}
+			{{if .IsAuthenticated}}
 			<a href='/logout'>Logout</a>
 			{{end}}
+			{{end}}
+			{{if not .IsAuthenticated}}
 			<a href='/login'>Login</a>
+			{{end}}
 		</nav>
 		<main>
 			{{with .Flash}}

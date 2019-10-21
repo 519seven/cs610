@@ -4,8 +4,9 @@ import (
 	"github.com/519seven/cs610/battleship/pkg/forms"
 	"github.com/519seven/cs610/battleship/pkg/models"
 	"bytes"
-	"golang.org/x/xerrors"
+	"errors"
 	"fmt"
+	"golang.org/x/xerrors"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -50,16 +51,18 @@ func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	screenName := r.PostForm.Get("screenName")
-	emailAddress := r.PostForm.Get("emailAddress")
-	password := r.PostForm.Get("password")
-
-	rowid, err := app.players.Insert(screenName, emailAddress, password)
-	if err != nil || rowid == 0 {
-		app.serverError(w, err)
+	_, err = app.players.Insert(r.PostForm.Get("screenName"), r.PostForm.Get("emailAddress"), r.PostForm.Get("password"))
+	if err != nil {
+		if errors.Is(err, models.ErrDuplicateEmail) {
+			form.Errors.Add("email", "Address is already in use")
+			app.renderSignup(w, r, "signup.page.tmpl", &templateDataSignup{Form: form})
+		} else {
+			app.serverError(w, err)
+		}
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("/player/%d", rowid), http.StatusSeeOther)
+	app.session.Put(r, "flash", "Your signup was successful. Please log in.")
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 // display login form
@@ -71,20 +74,35 @@ func (app *application) loginForm(w http.ResponseWriter, r *http.Request) {
 
 // login player
 func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
-	screenName := r.URL.Query().Get("screenName")
-	emailAddress := r.URL.Query().Get("emailAddress")
-	password := r.URL.Query().Get("password")
-	rowid, err := app.players.Insert(screenName, emailAddress, password)
-	if err != nil || rowid == 0 {
-		app.serverError(w, err)
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("/board/list", rowid), http.StatusSeeOther)
+	form := forms.New(r.PostForm)
+	form.Required("screenName")
+	form.MaxLength("screenName", 16)
+	form.Required("password")
+
+	rowid, err := app.players.Authenticate(form.Get("screenName"), form.Get("password"))
+	if err != nil {
+		if errors.Is(err, models.ErrInvalidCredentials) {
+			form.Errors.Add("generic", "Email or password is incorrect")
+			app.renderLogin(w, r, "login.page.tmpl", &templateDataLogin{Form: form})
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+	app.session.Put(r, "authenticatedUserID", rowid)
+	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
 
 // log out
 func (app *application) postLogout(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, fmt.Sprintf("/"), http.StatusSeeOther)
+	app.session.Remove(r, "authenticatedUserID")
+	app.session.Put(r, "flash", "You've been logged out successfully")
+	http.Redirect(w, r, "/login", 303)
 }
 
 // End Auth
@@ -271,7 +289,7 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 // form handler
 func (app *application) createBoardForm(w http.ResponseWriter, r *http.Request) {
 	app.renderBoard(w, r, "create.board.page.tmpl", &templateDataBoard {
-		Form: forms.New(nil),
+		Form: 				forms.New(nil),
 	})
 }
 
@@ -293,7 +311,7 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.renderBoard(w, r, "create.board.page.tmpl", &templateDataBoard{
-		PositionsOnBoard: s,
+		PositionsOnBoard: 	s,
 	})
 
 }
@@ -315,9 +333,8 @@ func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	app.renderBoards(w, r, "list.boards.page.tmpl", &templateDataBoards{
-		Boards: s,
+		Boards: 			s,
 	})
 }
 
@@ -339,6 +356,7 @@ func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
+	app.session.Put(r, "flash", "Board successfully updated!")
 	http.Redirect(w, r, fmt.Sprintf("/board/display/%d", id), http.StatusSeeOther)
 }
 
@@ -370,9 +388,8 @@ func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	app.renderPlayer(w, r, "player.page.tmpl", &templateDataPlayer{
-		Player: s,
+		Player: 			s,
 	})
 }
 
@@ -394,7 +411,7 @@ func (app *application) listPlayers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.renderPlayers(w, r, "players.page.tmpl", &templateDataPlayers{
-		Players: s,
+		Players: 			s,
 	})
 }
 
@@ -407,6 +424,7 @@ func (app *application) updatePlayer(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
+	app.session.Put(r, "flash", "Player successfully updated!")
 	http.Redirect(w, r, fmt.Sprintf("/player/%d", id), http.StatusSeeOther)
 }
 
@@ -434,8 +452,8 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
-	fmt.Fprintln(w, "Position (id #%d) has been updated...", rowid)
-	//http.Redirect(w, r, fmt.Sprintf("/player/list/%d", id), http.StatusSeeOther)
+	app.session.Put(r, "flash", fmt.Sprintf("Position (id #%d) has been updated...", rowid))
+	http.Redirect(w, r, fmt.Sprintf("/player/list/%d", rowid), http.StatusSeeOther)
 }
 
 // End Position
