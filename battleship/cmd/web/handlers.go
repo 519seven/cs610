@@ -5,10 +5,6 @@ import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 	"bytes"
 	"errors"
-<<<<<<< HEAD
-=======
-	"golang.org/x/xerrors"
->>>>>>> 42223b95a711f993f08c0eedabd251cf1a279be8
 	"fmt"
 	"golang.org/x/xerrors"
 	"html/template"

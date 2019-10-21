@@ -18,11 +18,11 @@ type PlayerModel struct {
 
 // authenticate player
 func (m *PlayerModel) Authenticate(screenName, password string) (int, error) {
-	var id int
+	var rowid int
 	var hashedPassword []byte
 	stmt := "SELECT rowid, hashedPassword FROM players WHERE screenName = ?"
 	row := m.DB.QueryRow(stmt, screenName)
-	err := row.Scan(&id, &hashedPassword)
+	err := row.Scan(&rowid, &hashedPassword)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, models.ErrInvalidCredentials
@@ -62,8 +62,8 @@ func (m *PlayerModel) Insert(screenName string, emailAddress string, password st
 		return 0, err
 	}
 
-	stmt := `INSERT INTO Players (screenName, emailAddress, hashedPassword, loggedIn, lastLogin) VALUES (?, ?, ?, ?, ?)`
-	result, err := m.DB.Exec(stmt, screenName, emailAddress, hashedPassword, 1, time.Now())
+	stmt := `INSERT INTO Players (screenName, emailAddress, hashedPassword, created, loggedIn, lastLogin) VALUES (?, ?, ?, ?, ?, ?)`
+	result, err := m.DB.Exec(stmt, screenName, emailAddress, hashedPassword, time.Now(), 0, time.Now())
 	if err != nil {
 		fmt.Println("[ERROR] Error:", err.Error())
 		if strings.Contains(err.Error(), "UNIQUE constraint failed:") {
@@ -83,7 +83,7 @@ func (m *PlayerModel) Insert(screenName string, emailAddress string, password st
 
 // list players
 func (m *PlayerModel) List() ([]*models.Player, error) {
-	stmt := `SELECT rowid, screenName, loggedIn, lastLogin FROM Players`
+	stmt := `SELECT rowid, screenName, emailAddress, loggedIn, inBattle, created, lastLogin FROM Players`
 	rows, err := m.DB.Query(stmt)
 	if err != nil {
 		fmt.Println("[ERROR] Error:", err.Error())

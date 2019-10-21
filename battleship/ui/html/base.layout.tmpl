@@ -13,13 +13,15 @@
 		<header>
 			<h1>{{template "title" .}}</h1>
 		</header>
+		{{if .IsAuthenticated}}
 		<nav>
-			<a href='/'>Home</a>
-			{{if .IsAuthenticated}}
+			Logged In
+		</nav>
+		<nav>
 			<a href='/board/list'>Boards</a>
 			<a href='/player/list'>Active Players</a>
-			{{end}}
 		</nav>
+		{{end}}
 		<nav>
 			{{if not .IsAuthenticated}}
 			<a href='/signup'>Sign Up</a>
