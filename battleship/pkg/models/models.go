@@ -39,7 +39,9 @@ type Player struct {
 	EmailAddress	string
 	HashedPassword	string
 	ScreenName 		string
-	IsActive   		sql.NullString
+	LoggedIn   		sql.NullString
+	InBattle   		sql.NullString
+	Created  		time.Time
 	LastLogin  		time.Time
 }
 

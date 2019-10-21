@@ -4,21 +4,18 @@
 {{define "main"}}
 <form action='/login' method='POST'>
     {{with .Form}}
-    <div>
-        <label>Login</label>
-    </div>
-    {{with .Errors.Get "generic"}}
-        <label class='error'>{{.}}</label><br/>
-    {{end}}
-    <div>
-        <label>Screen Name:</label>
-        <input type='text' maxlength=16 size=18 name="screenName" value='{{.Get "screenName"}}'>
-        <label>Password:</label>
-        <input type='password' name='password' maxlength=35 size=35 value=''>
-    </div>
-    <div>
-        <input type='submit' value='Login'>
-    </div>
+        {{with .Errors.Get "generic"}}
+            <label class='error'>{{.}}</label><br/>
+        {{end}}
+        <div>
+            <label>Screen Name:</label>
+            <input type='text' maxlength=16 size=18 name="screenName" value='{{.Get "screenName"}}'>
+            <label>Password:</label>
+            <input type='password' name='password' maxlength=35 size=35 value=''>
+        </div>
+        <div>
+            <input type='submit' value='Login'>
+        </div>
     {{end}}
 </form>
 {{end}}

@@ -8,16 +8,18 @@
 		<table>
 			<tr>
 				<th>ID</th>
-				<th>Name</th>
-				<th>Logged in?</th>
-				<th>In play?</th>
+				<th>Screen Name</th>
+				<th>E-mail Address</th>
+				<th>Logged In?</th>
+				<th>In Battle?</th>
 			</tr>
 			{{range .}}
 			<tr>
 				<td>{{.ID}}</td>
 				<td>{{.ScreenName}}</td>
-				<td>Indicate if user is active</td>
-				<td>Indicate if user is playing</td>
+				<td>{{.EmailAddress}}</td>
+				<td>{{.LoggedIn}}</td>
+				<td>{{.InBattle}}</td>
 			</tr>
 			{{end}}
 		</table>

@@ -1,6 +1,8 @@
 #!/bin/bash
 
 CURDIR=$(pwd)
+INSTALLGO="N"
+USER_GOROOT=/usr/local
 
 # Try # 1
 #mkdir -p ~/go/go1.13.1
@@ -38,4 +40,3 @@ if [[ $rc == *"already downloaded"* ]]; then
   printf "Go1.13 is already downloaded. You're good to go :)"
 fi
 exit 0
-

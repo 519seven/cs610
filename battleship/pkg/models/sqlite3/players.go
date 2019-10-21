@@ -9,6 +9,7 @@ import (
 	"golang.org/x/xerrors"
 	"strings"
 	"time"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type PlayerModel struct {
@@ -37,7 +38,8 @@ func (m *PlayerModel) Authenticate(screenName, password string) (int, error) {
 			return 0, err
 		}
 	}
-	return id, nil
+	// Otherwise, the password is correct. Return the user ID.
+	return rowid, nil
 }
 
 // get player information
@@ -93,7 +95,7 @@ func (m *PlayerModel) List() ([]*models.Player, error) {
 
 	for rows.Next() {
 		s := &models.Player{}
-		err = rows.Scan(&s.ID, &s.ScreenName, &s.IsActive, &s.LastLogin)
+		err = rows.Scan(&s.ID, &s.ScreenName, &s.EmailAddress, &s.LoggedIn, &s.InBattle, &s.Created, &s.LastLogin)
 		if err != nil {
 			fmt.Println("[ERROR] Error:", err.Error())
 			return nil, err

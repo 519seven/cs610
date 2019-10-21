@@ -5,6 +5,10 @@ import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 	"bytes"
 	"errors"
+<<<<<<< HEAD
+=======
+	"golang.org/x/xerrors"
+>>>>>>> 42223b95a711f993f08c0eedabd251cf1a279be8
 	"fmt"
 	"golang.org/x/xerrors"
 	"html/template"
@@ -17,14 +21,16 @@ import (
 // ----------------------------------------------------------------------------
 // Auth
 
-// display new player form
+// Display new player form
 func (app *application) getSignupForm(w http.ResponseWriter, r *http.Request) {
 	app.renderSignup(w, r, "signup.page.tmpl", &templateDataSignup {
 		Form: forms.New(nil),
 	})
 }
+// End getSignupForm
 
-// create a new player - submit signup form (POST)
+// Create a new player - submit signup form (POST)
+// Begin postSignup
 func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 	// Create a new forms.Form struct containing the POSTed data from the
 	//  form, then use the validation methods to check the content.
@@ -38,12 +44,13 @@ func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 	form.MaxLength("screenName", 16)
 	form.Required("emailAddress")
 	form.MaxLength("emailAddress", 55)
+	form.MatchesPattern("emailAddress", forms.EmailRX)
 	form.Required("password")
 	form.MaxLength("password", 55)
+	form.MinLength("password", 8)
 	form.Required("passwordConf")
-	form.MaxLength("passwordConf", 55)
 
-	// If our validation has failed anywhere along the way, bail
+	// If our validation has failed anywhere along the way, redisplay signup form
 	if !form.Valid() {
 		app.renderSignup(w, r, "signup.page.tmpl", &templateDataSignup {
 			Form: form,
@@ -64,15 +71,17 @@ func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 	app.session.Put(r, "flash", "Your signup was successful. Please log in.")
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
+// End postSignup
 
-// display login form
+// Begin loginForm
 func (app *application) loginForm(w http.ResponseWriter, r *http.Request) {
 	app.renderLogin(w, r, "login.page.tmpl", &templateDataLogin {
 		Form: forms.New(nil),
 	})
 }
+// End loginForm
 
-// login player
+// Begin postLogin
 func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -97,13 +106,15 @@ func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 	app.session.Put(r, "authenticatedUserID", rowid)
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
+// End postLogin
 
-// log out
+// Begin postLogout
 func (app *application) postLogout(w http.ResponseWriter, r *http.Request) {
 	app.session.Remove(r, "authenticatedUserID")
 	app.session.Put(r, "flash", "You've been logged out successfully")
 	http.Redirect(w, r, "/login", 303)
 }
+// End postLogout
 
 // End Auth
 // ----------------------------------------------------------------------------
