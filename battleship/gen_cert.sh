@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[[ -f .install_env ]] && { printf "Sourcing .install_env\n"; GO=$(cat .install_env); } || { printf ".install_env not found. Exiting.\n"; exit -1; }
+[[ -f .install_env ]] && { printf "Sourcing .install_env\n"; . .install_env; } || { printf ".install_env not found. Exiting.\n"; exit -1; }
 
 if [[ ! -d ./tls ]]; then
   mkdir -p tls
@@ -11,7 +11,7 @@ if [ ! -f cert.pem ] || [ ! -f key.pem ]; then
   homedir=$(getent passwd "$USER" | cut -d: -f6)
   printf "Using $homedir as your home directory\n"
   printf "Searching for generate_cert.go (this may take a while)\n"
-  gencert=$(find $homedir -type d -name '*go*' -exec find {} -name generate_cert.go -print \;)
+  gencert=$(find $homedir -type d -name $GO -exec find {} -name generate_cert.go -print \;)
   printf "Generating RSA key pair...\n"
   $GO run $gencert --rsa-bits=2048 --host=localhost
   printf "Storing private key in key.pem file\n"
