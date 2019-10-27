@@ -194,9 +194,9 @@ func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name
 		return
 	}
 
-	// write to buffer first to catch errors that may occur
+	// Write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
-	// execute template set, passing the dynamic data with the copyright year
+	// Execute template set, passing the dynamic data with the copyright year
 	err := ts.Execute(buf, app.addDefaultDataBoard(td, r))
 	if err != nil {
 		app.serverError(w, err)

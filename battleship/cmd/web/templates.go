@@ -101,9 +101,9 @@ func iterateColumns(count uint) []string {
 	return items
 }
 
-// initialize template.FuncMap and store it in a global variable
-// the FuncMap is essentially a string-keyed map which acts as a 
-// go-between for custom template functions and the functions themselves
+// Initialize template.FuncMap and store it in a GLOBAL variable
+// - FuncMap is essentially a string-keyed map
+//   - acts as a go-between for custom template functions and the functions themselves
 var functions = template.FuncMap{
 	"humanDate": humanDate,
 	"iterateColumns": iterateColumns,

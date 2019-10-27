@@ -145,6 +145,7 @@ func (m *BoardModel) Insert(boardID int, shipName string, arrayOfCoords []string
 	// (a fathom is a unit of measurement based on one's outstretched arms)
 	if numberOfFathomsRemaining != 0 {
 		// we did not receive enough coordinates to satisfy the requirement for this ship
+		//log.Info("numberOfFathomsRemaining is not 0")
 		fmt.Println("numberOfFathomsRemaining is not 0!  Sending you back to the form with your data.", numberOfFathomsRemaining)
 		fmt.Println("The ship that is in error is:", shipName)
 		return 1, errors.New(shipName)

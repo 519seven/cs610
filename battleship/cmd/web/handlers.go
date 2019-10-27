@@ -147,40 +147,21 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 // create a new board
 func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
-	// our router, pat, takes care of this for us now...
-	/*
-	// One example: allow POST method only
-	if r.Method != http.MethodPost {
-		// Change response header map before WriteHeader or Write
-		w.Header().Set("Allow", http.MethodPost)
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		// WriteHeader must be called explicity before any call to Write
-		//w.WriteHeader(405)
-		//w.Write([]byte("Method Not Allowed\r\n"))
-		// http.Error handles both WriteHeader and Write
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
-	// Another example: allow GET method only
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
-	*/
+	// POST /create/board
 	err := r.ParseForm()
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 	
-	// Create a new forms.Form struct containing the POSTed data from the
-	//  form, then use the validation methods to check the content.
+	// Create a new forms.Form struct containing the POSTed data
+	// - Use the validation methods to check the content
 	form := forms.New(r.PostForm)
 	form.Required("boardName")
 	form.MaxLength("boardName", 35)
 
+	// Before returning to the caller, let's check the validity of the ship coordinates
+	// - If anything is amiss, we can send those errors back as well
 	var carrier []string
 	cInd := 0
 	var battleship []string
@@ -191,8 +172,8 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 	sInd := 0
 	var destroyer []string
 	dInd := 0
-	// loop through the board's text fields, checking for their values
-	// add coordinates to a given ship's array
+	// Loop through the POSTed data, checking for their values
+	// - Add coordinates to a given ship's array
     for row := 1; row < 11; row++ {
 		rowStr := strconv.Itoa(row)
  		for _, col := range "ABCDEFGHIJ" {
@@ -203,8 +184,9 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 				//gameID := r.URL.Query().Get("gameID")
 				// userID should be gotten from somewhere else
 				//userID = r.PostForm("userID")
-				//fmt.Println("Getting the value at", "shipXY_"+rowStr+"_"+colStr)
-				//fmt.Println("That value is", shipXY)
+
+				// Upper the values to simplify testing
+				// - Build the slices containing the submitted coordinates
 				switch strings.ToUpper(shipXY) {
 				case "C":
 					carrier = append(carrier, rowStr+","+colStr)
@@ -222,16 +204,14 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 					destroyer = append(destroyer, rowStr+","+colStr)
 					dInd += 1
 				default:
+					// Add this to Form's error object?
+					// - I don't think it helps to tell the user this info
+					//   unless they're struggling to build the board
 					fmt.Println("Unsupported character:", shipXY)
 				}
 			}
 		}
 	}
-	carrier_status := 0
-	battleship_status := 0
-	cruiser_status := 0
-	submarine_status := 0
-	destroyer_status := 0
 
 	// Test our numbers
 	form.RequiredNumberOfItems("carrier", 5, cInd)
@@ -242,6 +222,7 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 
 	// If our validation has failed anywhere along the way, bail
 	if !form.Valid() {
+		// helper
 		app.renderBoard(w, r, "create.board.page.tmpl", &templateDataBoard{Form: form})
 		return
 	}
@@ -250,43 +231,39 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 	boardID, _ := app.boards.Create(form.Get("boardName"))
 
 	// Carrier
-	carrier_status, err = app.boards.Insert(boardID, "carrier", carrier)
+	_, err = app.boards.Insert(boardID, "carrier", carrier)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 
 	// Battleship
-	battleship_status, err = app.boards.Insert(boardID, "battleship", battleship)
+	_, err = app.boards.Insert(boardID, "battleship", battleship)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 
 	// Cruiser
-	cruiser_status, err = app.boards.Insert(boardID, "cruiser", cruiser)
+	_, err = app.boards.Insert(boardID, "cruiser", cruiser)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 
 	// Submarine
-	submarine_status, err = app.boards.Insert(boardID, "submarine", submarine)
+	_, err = app.boards.Insert(boardID, "submarine", submarine)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 
 	// Destroyer
-	destroyer_status, err = app.boards.Insert(boardID, "destroyer", destroyer)
+	_, err = app.boards.Insert(boardID, "destroyer", destroyer)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-
-	fmt.Println("carrier_status: ", carrier_status, "| battleship_status: ", battleship_status, 
-		"| cruiser_status: ", cruiser_status, "| submarine_status: ", submarine_status, 
-		"| destroyer_status: ", destroyer_status)	// debugging
 
 	app.session.Put(r, "flash", "Board successfully created!")
 	// Send user back to list of boards
@@ -295,6 +272,7 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 
 // form handler
 func (app *application) createBoardForm(w http.ResponseWriter, r *http.Request) {
+	// GET /create/board
 	app.renderBoard(w, r, "create.board.page.tmpl", &templateDataBoard {
 		Form: 				forms.New(nil),
 	})

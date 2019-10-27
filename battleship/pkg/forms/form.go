@@ -17,14 +17,14 @@ type Form struct {
 	Errors errors 
 }
 
-// Define a New function to initialize a custom Form struct.
-// Notice that this takes the form data as the parameter?
+// Define a New function to initialize a custom Form struct
+//  Takes the Form data as the parameter
 func New(data url.Values) *Form {
 	return &Form{ data,
 	errors(map[string][]string{}), }
 }
 
-// Matches Pattern
+// Matches Pattern - for verifying a pattern match
 func (f *Form) MatchesPattern(field string, pattern *regexp.Regexp) {
 	value := f.Get(field)
 	if value == "" {
@@ -35,9 +35,7 @@ func (f *Form) MatchesPattern(field string, pattern *regexp.Regexp) {
 	}
 }
 
-// Implement a MaxLength method to check that a specific field in the form
-//  contains a maximum number of characters. If the check fails then add the 
-//  appropriate message to the form errors.
+// MaxLength - for checking maximum number of characters
 func (f *Form) MaxLength(field string, d int) {
 	value := f.Get(field)
 	if value == "" {
@@ -48,7 +46,7 @@ func (f *Form) MaxLength(field string, d int) {
 	}
 }
 
-// MinLength
+// MinLength - for checking presence of a minimum number of characters
 func (f *Form) MinLength(field string, d int) {
 	value := f.Get(field)
 	if value == "" {
@@ -59,9 +57,7 @@ func (f *Form) MinLength(field string, d int) {
 	}
 }
 
-// Implement a PermittedValues method to check that a specific field in the form 
-//  matches one of a set of specific permitted values. If the check fails
-//  then add the appropriate message to the form errors.
+// PermittedValues - matches one of a set of specific permitted values
 func (f *Form) PermittedValues(field string, opts ...string) {
 	value := f.Get(field)
 	if value == "" {
@@ -75,9 +71,7 @@ func (f *Form) PermittedValues(field string, opts ...string) {
 	f.Errors.Add(field, "This field is invalid")
 }
 
-// Implement a Required method to check that specific fields in the form
-//  data are present and not blank. If any fields fail this check, add the
-//  appropriate message to the form errors.
+// Required - check for the presence of an item in a field list
 func (f *Form) Required(fields ...string) {
 	for _, field := range fields {
 		value := f.Get(field)
@@ -87,8 +81,7 @@ func (f *Form) Required(fields ...string) {
 	}
 }
 	
-// Implement a RequiredNumberOfItems method to check that there are X number of
-//  coordinates for the specific ship
+// RequiredNumberOfItems - require X number of coordinates for the specific ship
 func (f *Form) RequiredNumberOfItems(shipType string, requiredNumber int, countedNumber int) {
 	if requiredNumber != countedNumber {
 		var msg string
