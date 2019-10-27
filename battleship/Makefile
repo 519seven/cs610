@@ -14,12 +14,12 @@
 #GO113TEST=$(GO113CMD) test
 #GO113GET=$(GO113CMD) get
 
-include .install_env
-export $(shell sed 's/=.*//' .install_env)
+# Environment setup
+ENV_FILE=.install_env
 
 # Binary names
 BINARY_NAME=battleship
-BINARY_UNIX=$(BINARY_NAME)_unix
+
 
 all: setup certs build
 
@@ -27,28 +27,14 @@ test:
 		env
 
 build: 
-		${GO} build -o $(BINARY_NAME) -v ./cmd/web
-		$(info 	Your battle awaits you!  Run ./battleship (-h for more info))
-		$(info  ------------------ Remember to use HTTPS ------------------)
+		set -e; ./build_project.sh
 		
 certs:
 		set -e; ./gen_cert.sh
 
 clean: 
-		$(GO113CLEAN)
 		rm -f $(BINARY_NAME)
-		rm -f $(BINARY_UNIX)
-deps:
-		$(GO113GET) golang.org/x/xerrors
-		$(GO113GET) github.com/justinas/alice
-		$(GO113GET) github.com/mattn/go-sqlite3
-		$(GO113GET) github.com/golangcollege/sessions@v1
+		rm -f $(ENV_FILE)
 
-run:
-		${GO} -o $(BINARY_NAME) -v ./...
-		./$(BINARY_NAME)
 setup:
 		set -e; ./setup_env.sh
-
-build-linux:
-		CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX) -v
