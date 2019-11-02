@@ -9,7 +9,9 @@ import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 )
 
-// Allow more data to be passed to the template
+// These structs are used to pass more data to the template
+
+// Battle
 type templateDataBattle struct {
 	CurrentYear 			int
 	Flash					string
@@ -18,7 +20,7 @@ type templateDataBattle struct {
 	Battle      			*models.Battle
 	Battles     			[]*models.Battle
 }
-// single board
+// Board
 type templateDataBoard struct {
 	CurrentYear 			int
 	Flash					string
@@ -26,8 +28,9 @@ type templateDataBoard struct {
 	IsAuthenticated			bool
 	PositionsOnBoard       	*models.PositionsOnBoard
 	PositionsOnBoards      	[]*models.PositionsOnBoard
+	MainGrid				template.HTML
 }
-// list of boards
+// Board List
 type templateDataBoards struct {
 	CurrentYear 			int
 	Flash					string
@@ -36,6 +39,7 @@ type templateDataBoards struct {
 	Board					*models.Board
 	Boards					[]*models.Board
 }
+// Login
 type templateDataLogin struct {
 	CurrentYear 			int
 	Flash					string
@@ -43,6 +47,7 @@ type templateDataLogin struct {
 	IsAuthenticated			bool
 	Login      				*models.Login
 }
+// Player
 type templateDataPlayer struct {
 	CurrentYear 			int
 	Flash					string
@@ -51,6 +56,7 @@ type templateDataPlayer struct {
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
+// Player List
 type templateDataPlayers struct {
 	CurrentYear 			int
 	Flash					string
@@ -59,13 +65,7 @@ type templateDataPlayers struct {
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
-type templateDataSignup struct {
-	CurrentYear 			int
-	Flash					string
-	Form					*forms.Form
-	IsAuthenticated			bool
-	Signup      			*models.Signup
-}
+// Position
 type templateDataPosition struct {
 	CurrentYear 			int
 	Flash					string
@@ -73,6 +73,14 @@ type templateDataPosition struct {
 	IsAuthenticated			bool
 	Position    			*models.Position
 	Positions   			[]*models.Position
+}
+// Sign-Up
+type templateDataSignup struct {
+	CurrentYear 			int
+	Flash					string
+	Form					*forms.Form
+	IsAuthenticated			bool
+	Signup      			*models.Signup
 }
 
 // Give us human-friendly dates

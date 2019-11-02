@@ -1,14 +1,12 @@
 package sqlite3
 
 import (
-	"github.com/519seven/cs610/battleship/pkg/models"
-	//"github.com/519seven/cs610/battleship/pkg/models/sqlite3"
 	"database/sql"
 	"golang.org/x/xerrors"
-	"errors"
 	"fmt"
 	"strings"
-	"strconv"
+
+	"github.com/519seven/cs610/battleship/pkg/models"
 )
 
 type BoardModel struct {
@@ -24,7 +22,7 @@ func trimSuffix(s, suffix string) string {
 }
 
 // return the next alphabet character but stop at maxCharacters
-func getNextChar(character string, maxCharacters uint) byte {
+func GetNextChar(character string, maxCharacters uint) byte {
 	var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	for i := range alphabet {
 		if string(alphabet[i]) == character {
@@ -37,7 +35,7 @@ func getNextChar(character string, maxCharacters uint) byte {
 	}
 	return 'z'
 }
-func matchFound(coordinates string, stringOfCoords string) bool {
+func MatchFound(coordinates string, stringOfCoords string) bool {
 	//fmt.Println("Looking for ", coordinates)
 	if strings.Contains(stringOfCoords, coordinates) {
 		return true
@@ -99,59 +97,6 @@ func (m *BoardModel) Get(rowid int) (*models.PositionsOnBoard, error) {
 func (m *BoardModel) Insert(boardID int, shipName string, arrayOfCoords []string) (int, error) {
 	// get userID from a trusted location
 	userID := 1
-	// once we have a boardID, update coordinates table with each ship's XY
-	// First, we have to define a set of coordinates to a ship
-	// If our coordinates don't meet our requirements,
-	// return to the form with an error message
-	// loop through the values, pick a row, find out what is adjacent
-	// figure out which ship it is, remember the ship
-	// if our ship definitions are violated, fail this routine
-	searchDirection := "initialize"
-	numberOfFathomsRemaining := 0
-	// the first coordinate is given so we want n-1 more
-	switch shipName {
-	case "carrier":
-		numberOfFathomsRemaining = 4
-	case "battleship":
-		numberOfFathomsRemaining = 3
-	case "cruiser":
-		numberOfFathomsRemaining = 2
-	case "submarine":
-		numberOfFathomsRemaining = 2
-	case "destroyer":
-		numberOfFathomsRemaining = 1
-	}
-	for _, rc := range arrayOfCoords {
-		s := strings.Split(rc, ",")
-		//fmt.Println(s)
-		row, col := s[0], s[1]
-		nxtR, _ := strconv.Atoi(row)
-		nextRow := strconv.Itoa(nxtR+1)
-		nextCol := string(getNextChar(col, 10))
-		if (searchDirection == "initialize" || searchDirection == "row") && numberOfFathomsRemaining > 0 && matchFound(row+","+nextCol, strings.Join(arrayOfCoords, " ")) {
-			// is the next column in the slice?
-			//fmt.Println("match found in the next column: ", row+"|"+nextCol, "searching this row only")
-			searchDirection = "row"
-			numberOfFathomsRemaining -= 1
-		}
-		if (searchDirection == "initialize" || searchDirection == "column") && numberOfFathomsRemaining > 0 && matchFound(nextRow+","+col, strings.Join(arrayOfCoords, " ")) {
-			// is the next row in the slice?
-			//fmt.Println("match found in the next row: ", nextRow+"|"+col, "searching this column only")
-			searchDirection = "column"
-			numberOfFathomsRemaining -= 1
-		}
-	}
-	// after looping through all of the coordinates of a ship, we ought to be at 0 fathoms remaining
-	// (a fathom is a unit of measurement based on one's outstretched arms)
-	if numberOfFathomsRemaining != 0 {
-		// we did not receive enough coordinates to satisfy the requirement for this ship
-		//log.Info("numberOfFathomsRemaining is not 0")
-		fmt.Println("numberOfFathomsRemaining is not 0!  Sending you back to the form with your data.", numberOfFathomsRemaining)
-		fmt.Println("The ship that is in error is:", shipName)
-		return 1, errors.New(shipName)
-	}
-	// If we've made it to here, then we have a good set of coordinates for a ship
-	//  we have a boardID, userID, shipName, and a bunch of coordinates
 	// Get shipID
 	var shipID int
 	stmt := "SELECT rowid FROM Ships WHERE shipType = ? LIMIT 1"
@@ -199,6 +144,7 @@ func (m *BoardModel) Insert(boardID int, shipName string, arrayOfCoords []string
 	fmt.Println("Done with", shipName, "\nReturning control back to createBoard")
 	return 0, nil
 }
+
 func (m *BoardModel) List(userID int) ([]*models.Board, error) {
 	stmt := `SELECT rowid, boardName, userID, gameID, created FROM Boards 
 	WHERE userID = ?

@@ -13,9 +13,59 @@ import (
 	"strings"
 )
 
+// BEGIN AUTH
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-// Auth
+// ----------------------------------------------------------------------------
+// Log-In
+// ----------------------------------------------------------------------------
+
+// Begin loginForm
+func (app *application) loginForm(w http.ResponseWriter, r *http.Request) {
+	app.renderLogin(w, r, "login.page.tmpl", &templateDataLogin {
+		Form: forms.New(nil),
+	})
+}
+// End loginForm
+
+// Begin postLogin
+func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+	form := forms.New(r.PostForm)
+	form.Required("screenName")
+	form.MaxLength("screenName", 16)
+	form.Required("password")
+
+	rowid, err := app.players.Authenticate(form.Get("screenName"), form.Get("password"))
+	if err != nil {
+		if errors.Is(err, models.ErrInvalidCredentials) {
+			form.Errors.Add("generic", "Email or password is incorrect")
+			app.renderLogin(w, r, "login.page.tmpl", &templateDataLogin{Form: form})
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+	app.session.Put(r, "authenticatedUserID", rowid)
+	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
+}
+// End postLogin
+
+// Begin postLogout
+func (app *application) postLogout(w http.ResponseWriter, r *http.Request) {
+	app.session.Remove(r, "authenticatedUserID")
+	app.session.Put(r, "flash", "You've been logged out successfully")
+	http.Redirect(w, r, "/login", 303)
+}
+// End postLogout
+
+// ----------------------------------------------------------------------------
+// Sign-Up
+// ----------------------------------------------------------------------------
 
 // Display new player form
 func (app *application) getSignupForm(w http.ResponseWriter, r *http.Request) {
@@ -69,54 +119,16 @@ func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 }
 // End postSignup
 
-// Begin loginForm
-func (app *application) loginForm(w http.ResponseWriter, r *http.Request) {
-	app.renderLogin(w, r, "login.page.tmpl", &templateDataLogin {
-		Form: forms.New(nil),
-	})
-}
-// End loginForm
-
-// Begin postLogin
-func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
-	form := forms.New(r.PostForm)
-	form.Required("screenName")
-	form.MaxLength("screenName", 16)
-	form.Required("password")
-
-	rowid, err := app.players.Authenticate(form.Get("screenName"), form.Get("password"))
-	if err != nil {
-		if errors.Is(err, models.ErrInvalidCredentials) {
-			form.Errors.Add("generic", "Email or password is incorrect")
-			app.renderLogin(w, r, "login.page.tmpl", &templateDataLogin{Form: form})
-		} else {
-			app.serverError(w, err)
-		}
-		return
-	}
-	app.session.Put(r, "authenticatedUserID", rowid)
-	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
-}
-// End postLogin
-
-// Begin postLogout
-func (app *application) postLogout(w http.ResponseWriter, r *http.Request) {
-	app.session.Remove(r, "authenticatedUserID")
-	app.session.Put(r, "flash", "You've been logged out successfully")
-	http.Redirect(w, r, "/login", 303)
-}
-// End postLogout
-
-// End Auth
+// END AUTH
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// BEGIN HOME
+
 // Home
-
+// - A method against *application
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	// write board data
 	files := []string{
@@ -140,12 +152,15 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	buf.WriteTo(w)
 }
 
-// End Home
+// END HOME
 // ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-// Boards
 
-// create a new board
+// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// BEGIN BOARDS
+
+// Create a new board
 func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 	// POST /create/board
 	err := r.ParseForm()
@@ -213,12 +228,18 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Test our numbers
+	// Test our numbers, update .Valid property of our Form object
 	form.RequiredNumberOfItems("carrier", 5, cInd)
 	form.RequiredNumberOfItems("battleship", 4, bInd)
 	form.RequiredNumberOfItems("cruiser", 3, rInd)
 	form.RequiredNumberOfItems("submarine", 3, sInd)
 	form.RequiredNumberOfItems("destroyer", 2, dInd)
+
+	form.ValidNumberOfItems(carrier, "carrier")
+	form.ValidNumberOfItems(battleship, "battleship")
+	form.ValidNumberOfItems(cruiser, "cruiser")
+	form.ValidNumberOfItems(submarine, "submarine")
+	form.ValidNumberOfItems(destroyer, "destroyer")
 
 	// If our validation has failed anywhere along the way, bail
 	if !form.Valid() {
@@ -226,6 +247,9 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 		app.renderBoard(w, r, "create.board.page.tmpl", &templateDataBoard{Form: form})
 		return
 	}
+
+	// If we've made it to here, then we have a good set of coordinates for a ship
+	// - We have a boardID, userID, shipName, and a bunch of coordinates
 
 	// Create a new board, return boardID
 	boardID, _ := app.boards.Create(form.Get("boardName"))
@@ -270,7 +294,7 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
 
-// form handler
+// Form handler
 func (app *application) createBoardForm(w http.ResponseWriter, r *http.Request) {
 	// GET /create/board
 	app.renderBoard(w, r, "create.board.page.tmpl", &templateDataBoard {
@@ -278,7 +302,7 @@ func (app *application) createBoardForm(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// display board - the way it would appear in a 10x10 grid
+// Display board - the way it would appear in a 10x10 grid
 func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 	boardID, err := strconv.Atoi(r.URL.Query().Get(":id"))
 	if err != nil || boardID < 1 {
@@ -301,7 +325,7 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// list boards
+// List boards
 func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	// the userID should be in a session somewhere
 	userID := 1
@@ -323,7 +347,7 @@ func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// update
+// Update
 func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 	// restrict this handler to HTTP POST methods only
 	if r.Method != http.MethodPost {
@@ -345,12 +369,15 @@ func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/board/display/%d", id), http.StatusSeeOther)
 }
 
-// End Boards
+// END BOARDS
+// ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-// Players
 
-// display player
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// BEGIN PLAYERS
+
+// Display player
 func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
 	// Allow GET method only
 	if r.Method != http.MethodGet {
@@ -378,7 +405,7 @@ func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// list players
+// List players
 func (app *application) listPlayers(w http.ResponseWriter, r *http.Request) {
 	// the userID should be in a session somewhere
 	userID := 123
@@ -400,7 +427,7 @@ func (app *application) listPlayers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// update player
+// Update player
 func (app *application) updatePlayer(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	screenName := r.URL.Query().Get("boardName")
@@ -413,12 +440,15 @@ func (app *application) updatePlayer(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/player/%d", id), http.StatusSeeOther)
 }
 
-// End Players
+// END PLAYERS
 // ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-// Position
 
-// update a position's pinColor
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// BEGIN POSITIONS
+
+// Update a position's pinColor
 func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 	boardID, err := strconv.Atoi(r.URL.Query().Get("boardID"))	// get from session?
 	if err != nil {
@@ -441,6 +471,6 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/player/list/%d", rowid), http.StatusSeeOther)
 }
 
-// End Position
+// END POSITIONS
 // ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------

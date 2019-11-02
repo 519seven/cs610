@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"runtime/debug"
 	"time"
 	"strings"
+	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -101,14 +103,14 @@ func checkMethod(m string, w http.ResponseWriter, r *http.Request) (http.Respons
 // -----------------------------------------------------------------------------
 // General
 
-// clean form data
+// Clean form data
 func cleanCoordinates(coordinates string) string {
 	cleanString := strings.Replace(coordinates, "\t", "", -1)
 	cleanString = strings.Replace(cleanString, "\n", "", -1)
 	return strings.Replace(cleanString, " ", "", -1)
 }
 
-// check relationship between current user and a resource
+// Check relationship between current user and a resource
 func (app *application) checkRelationship(resourceID int) bool {
 	return true
 }
@@ -118,7 +120,28 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 	return app.session.Exists(r, "authenticatedUserID")
 }
 
-// add default data to create board interface
+// Pre-processing HTML/template data
+// - Draw the board and pass in the HTML
+func (app *application) preprocessBoard(r *http.Request) template.HTML {
+	gameBoard := "<table><th>&nbsp;</th>"
+	for _, col := range "ABCDEFGHIJ" {
+		gameBoard += fmt.Sprintf("<th>%s</th>", string(col))
+	}
+	for row := 1; row < 11; row++ {
+		gameBoard += fmt.Sprintf("<tr><td>%d</td>", row)
+		rowStr := strconv.Itoa(row)
+		for _, col := range "ABCDEFGHIJ" {
+			gameBoard += fmt.Sprintf("<td><input type='text' maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", row, string(col), r.PostForm.Get("shipXY"+rowStr+string(col)))
+		}
+		gameBoard += "</tr>"
+	}
+	gameBoard += "</table>"
+	return template.HTML(gameBoard)
+}
+
+// ----------------------------------------------------------------------------
+
+// Add default data to create board interface
 func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Request) *templateDataBoard {
 	if td == nil {
 		td = &templateDataBoard{}
@@ -126,10 +149,15 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	// Positions
+	//td.PositionsOnBoard = app.positionsOnBoard(r)
+	//td.PositionsOnBoards = app.positionsOnBoard(r)
+	// Add a new string containing processed template snippet
+	td.MainGrid = app.preprocessBoard(r)
 	return td
 }
 
-// add default data to list of boards screens
+// Add default data to list of boards screens
 func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Request) *templateDataBoards {
 	if td == nil {
 		td = &templateDataBoards{}
@@ -140,7 +168,7 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	return td
 }
 
-// add default data to login screens
+// Add default data to login screens
 func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Request) *templateDataLogin {
 	if td == nil {
 		td = &templateDataLogin{}
@@ -151,7 +179,7 @@ func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Reque
 	return td
 }
 
-// add default data to player info screens
+// Add default data to player info screens
 func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Request) *templateDataPlayer {
 	if td == nil {
 		td = &templateDataPlayer{}
@@ -162,7 +190,7 @@ func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Req
 	return td
 }
 
-// add default data to player info screens
+// Add default data to player info screens
 func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.Request) *templateDataPlayers {
 	if td == nil {
 		td = &templateDataPlayers{}
@@ -173,7 +201,7 @@ func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.R
 	return td
 }
 
-// add default data to signup screens
+// Add default data to signup screens
 func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Request) *templateDataSignup {
 	if td == nil {
 		td = &templateDataSignup{}
@@ -184,8 +212,9 @@ func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Req
 	return td
 }
 
-// Cache
+// Cache Templates
 // ----------------------------------------------------------------------------
+
 // Board
 func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoard) {
 	ts, ok := app.templateCache[name]
@@ -205,7 +234,7 @@ func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name
 	buf.WriteTo(w)
 }
 
-// cache templates for Boards
+// Boards
 func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoards) {
 	ts, ok := app.templateCache[name]
 	if !ok {
@@ -224,7 +253,7 @@ func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, nam
 	buf.WriteTo(w)
 }
 
-// cache templates for Login
+// Login
 func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name string, td *templateDataLogin) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -244,7 +273,7 @@ func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name
 	buf.WriteTo(w)
 }
 
-// cache templates for Player
+// Player
 func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayer) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -264,7 +293,7 @@ func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, nam
 	buf.WriteTo(w)
 }
 
-// cache templates for Players
+// Players
 func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayers) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -284,7 +313,7 @@ func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, na
 	buf.WriteTo(w)
 }
 
-// cache templates for Signup
+// Signup
 func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, name string, td *templateDataSignup) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -307,21 +336,22 @@ func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, nam
 /* -------------------------------------------------------------------------- */
 // Error handling
 
-// The serverError helper writes an error message and stack trace to the errorLog, // then sends a generic 500 Internal Server Error response to the user.
+// The serverError helper writes an error message and stack trace to the errorLog
+//  - Sends a generic 500 Internal Server Error response to the user
 func (app *application) serverError(w http.ResponseWriter, err error) {
 	trace := fmt.Sprintf("%s\n%s", err.Error(), debug.Stack())
 	app.errorLog.Output(2, trace)
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
-// The clientError helper sends a specific status code and corresponding description // to the user. We'll use this later in the book to send responses like 400 "Bad
-// Request" when there's a problem with the request that the user sent.
+// The clientError helper sends a specific status code and description to the user
+// - Like 400 "Bad Request" when there's a problem with the request that the user sent
 func (app *application) clientError(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
 }
 
-// For consistency, we'll also implement a notFound helper. This is simply a
-// convenience wrapper around clientError which sends a 404 Not Found response to // the user.
+// And, a notFound helper for consistency
+// - A convenience wrapper around clientError
 func (app *application) notFound(w http.ResponseWriter) {
 	app.clientError(w, http.StatusNotFound)
 }
