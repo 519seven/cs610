@@ -60,6 +60,17 @@ func (f *Form) MinLength(field string, d int) {
 	}
 }
 
+// FieldsMatch - check to ensure fields match; ex: passwords
+func (f *Form) FieldsMatch(f1, f2 string, shouldTheyMatch bool) {
+	field1 := f.Get(f1)
+	field2 := f.Get(f2)
+	if (field1 == field2 && shouldTheyMatch == true) || (field1 != field2 && shouldTheyMatch == false) {
+		return
+	} else if (field1 == field2 && shouldTheyMatch == false) || (field1 != field2 && shouldTheyMatch == true) {
+		f.Errors.Add("password", "Password and password confirmation do not match")
+	}
+}
+
 // PermittedValues - matches one of a set of specific permitted values
 func (f *Form) PermittedValues(field string, opts ...string) {
 	value := f.Get(field)

@@ -30,9 +30,12 @@ type application struct {
 }
 
 // Why models?
-// 1. Database logic isn't tied to our handlers which means that handler responsibilities are limited to HTTP stuff
-// 2. By creating the <item>Model type and implementing methods on it we've been able to make our model a single, neatly encapsulated object
-// 3. We have total control over which database is used at runtime, just by using the command line flag
+// 1. Database logic isn't tied to our handlers which means that
+//    handler responsibilities are limited to HTTP stuff
+// 2. By creating the <item>Model type and implementing methods on it we've 
+//    been able to make our model a single, neatly encapsulated object
+// 3. We have total control over which database is used at runtime, just by 
+//    using the command line flag
 // 4. The directory structure scales nicely if your project has multiple back-ends
 
 // Our entry point
@@ -89,10 +92,10 @@ func main() {
 
 	// Struct to hold non-default TLS settings
 	tlsConfig := &tls.Config {
-		PreferServerCipherSuites: 	true,				// ignored if TLS 1.3 is negotiated
-		CurvePreferences:			[]tls.CurveID{tls.X25519, tls.CurveP256},
-		CipherSuites: []uint16 {
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, 
+		PreferServerCipherSuites: 	true,	// this serves many purposes ---> 	// a.) ignored if TLS 1.3 is negotiated
+		CurvePreferences:			[]tls.CurveID{tls.X25519, tls.CurveP256},	// b.) prefer the cipher suites that are first in the slice
+		CipherSuites: []uint16 {												// c.) also meant to prioritize what is best for my server's hardware
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, 						
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, 
 			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305, 
 			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305, 

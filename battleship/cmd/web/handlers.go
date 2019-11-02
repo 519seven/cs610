@@ -95,6 +95,7 @@ func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 	form.MaxLength("password", 55)
 	form.MinLength("password", 8)
 	form.Required("passwordConf")
+	form.FieldsMatch("password", "passwordConf", true)
 
 	// If our validation has failed anywhere along the way, redisplay signup form
 	if !form.Valid() {
@@ -289,6 +290,7 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Add status message to session data; create new if one doesn't exist
 	app.session.Put(r, "flash", "Board successfully created!")
 	// Send user back to list of boards
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)

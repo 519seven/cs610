@@ -39,6 +39,7 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		return nil, err
 	}
 	// create the tables if they don't exist
+	// in sqlite3, a unique, auto-incrementing rowid is automatically created
 	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS Battles 
 		(player1ID INTEGER, player2ID INTEGER, turn INTEGER)`)
 	stmt.Exec()
@@ -131,7 +132,9 @@ func (app *application) preprocessBoard(r *http.Request) template.HTML {
 		gameBoard += fmt.Sprintf("<tr><td>%d</td>", row)
 		rowStr := strconv.Itoa(row)
 		for _, col := range "ABCDEFGHIJ" {
-			gameBoard += fmt.Sprintf("<td><input type='text' maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", row, string(col), r.PostForm.Get("shipXY"+rowStr+string(col)))
+			gameBoard += fmt.Sprintf(
+				"<td><input type='text'	maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", 
+				row, string(col), r.PostForm.Get("shipXY"+rowStr+string(col)))
 		}
 		gameBoard += "</tr>"
 	}
