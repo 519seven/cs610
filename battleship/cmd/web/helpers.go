@@ -13,9 +13,10 @@ import (
 	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/justinas/nosurf"							 // csrf prevention
 )
 
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 // database
 
 func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
@@ -118,7 +119,11 @@ func (app *application) checkRelationship(resourceID int) bool {
 
 // For Authorization
 func (app *application) isAuthenticated(r *http.Request) bool {
-	return app.session.Exists(r, "authenticatedUserID")
+	isAuthenticated, ok := r.Context().Value(contextKeyIsAuthenticated).(bool)
+	if !ok {
+		return false
+	}
+	return isAuthenticated
 }
 
 // Pre-processing HTML/template data
@@ -143,12 +148,17 @@ func (app *application) preprocessBoard(r *http.Request) template.HTML {
 }
 
 // ----------------------------------------------------------------------------
+// Create template data helpers so we can add items.  This information is 
+// automatically available each time we render a template
+// ----------------------------------------------------------------------------
 
 // Add default data to create board interface
 func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Request) *templateDataBoard {
 	if td == nil {
 		td = &templateDataBoard{}
 	}
+	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
@@ -165,6 +175,12 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	if td == nil {
 		td = &templateDataBoards{}
 	}
+	boardID, err := strconv.Atoi(app.session.GetString(r, "boardID"))
+	if err != nil {
+		fmt.Println("[INFO] boardID is", err)
+	}
+	td.ActiveBoardID = boardID
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
@@ -176,6 +192,7 @@ func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Reque
 	if td == nil {
 		td = &templateDataLogin{}
 	}
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
@@ -187,6 +204,7 @@ func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Req
 	if td == nil {
 		td = &templateDataPlayer{}
 	}
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
@@ -198,6 +216,7 @@ func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.R
 	if td == nil {
 		td = &templateDataPlayers{}
 	}
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
@@ -209,6 +228,7 @@ func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Req
 	if td == nil {
 		td = &templateDataSignup{}
 	}
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)

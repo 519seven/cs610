@@ -4,6 +4,8 @@
 
 {{define "main"}}
 	{{if .Boards}}
+		<form name=selectBoard action='/board/select' method=POST>
+		<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
 		{{with .Boards}}
 		<table>
 			<tr>
@@ -14,8 +16,8 @@
 				<th>Battle result</th>
 			</tr>
 			{{range .}}
-			<tr>
-				<td>#{{.ID}}</td>
+			<tr>												<!-- Access parent object passed to Execute //-->
+				<td><input type=radio name=boardID value="{{.ID}}" {{if eq $.ActiveBoardID .ID}}checked{{end}}></td>
 				<td>{{humanDate .Created}}</td>
 				<td><a href="/board/{{.ID}}">{{.Title}}</a></td>
 				<td>{{.GameID}}</td>
@@ -23,9 +25,17 @@
 			</tr>
 			{{end}}
 		</table>
+		</form>
 		{{end}}
 	{{else}}
 		<p>Nothing to see just yet</p>
 	{{end}}
 	<a href="/board/create">Create a new board</a>
+	<script type='text/javascript'>
+	$(document).ready(function() { 
+		$('input[name=boardID]').change(function(){
+    	    $('form').submit();
+   		});
+  	});
+</script>
 {{end}}

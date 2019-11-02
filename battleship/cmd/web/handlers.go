@@ -1,8 +1,6 @@
 package main
 
 import (
-	"github.com/519seven/cs610/battleship/pkg/forms"
-	"github.com/519seven/cs610/battleship/pkg/models"
 	"bytes"
 	"errors"
 	"fmt"
@@ -11,6 +9,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/519seven/cs610/battleship/pkg/forms"
+	"github.com/519seven/cs610/battleship/pkg/models"
 )
 
 // BEGIN AUTH
@@ -50,6 +51,7 @@ func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	// Add the ID of user to session - they are now "logged in"
 	app.session.Put(r, "authenticatedUserID", rowid)
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
@@ -57,6 +59,7 @@ func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 
 // Begin postLogout
 func (app *application) postLogout(w http.ResponseWriter, r *http.Request) {
+	// "log out" the user by removing their ID from the session
 	app.session.Remove(r, "authenticatedUserID")
 	app.session.Put(r, "flash", "You've been logged out successfully")
 	http.Redirect(w, r, "/login", 303)
@@ -154,6 +157,39 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 }
 
 // END HOME
+// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// BEGIN ABOUT
+
+// Home
+// - A method against *application
+func (app *application) about(w http.ResponseWriter, r *http.Request) {
+	// write board data
+	files := []string{
+		"./ui/html/about.page.tmpl",
+		"./ui/html/base.layout.tmpl",
+		"./ui/html/footer.partial.tmpl",
+	}
+	// render template
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	// to catch template errors, write to buffer first
+	buf := new(bytes.Buffer)
+	err = ts.Execute(buf, nil)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)
+}
+
+// END ABOUT
 // ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 
@@ -349,15 +385,19 @@ func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Select
+func (app *application) selectBoard(w http.ResponseWriter, r*http.Request) {
+	form := forms.New(r.PostForm)
+	boardID := form.Get("boardID")
+	fmt.Println("submitted boardID:", boardID)
+	// make sure my boardID belong to this user
+	app.session.Put(r, "boardID", boardID)
+	app.session.Put(r, "flash", "Board selected!")
+	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
+}
+
 // Update
 func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
-	// restrict this handler to HTTP POST methods only
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	boardName := r.URL.Query().Get("boardName")
 	userID := 123

@@ -3,6 +3,7 @@
 {{define "title"}}New Board{{end}}
 {{define "main"}}
 <form action='/board/create' method='POST'>
+	<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
     <div>
         <label>Create Your Board</label>
     </div>

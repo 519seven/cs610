@@ -44,19 +44,20 @@ func (m *PlayerModel) Authenticate(screenName, password string) (int, error) {
 
 // get player information
 func (m *PlayerModel) Get(rowid int) (*models.Player, error) {
+	p := &models.Player{}
+
 	stmt := `SELECT rowid, screenName, emailAddress, lastLogin FROM Players WHERE rowid = ?`
-	s := &models.Player{}
-	err := m.DB.QueryRow(stmt, rowid).Scan(&s.ID, &s.ScreenName, &s.EmailAddress, &s.LastLogin)
+	err := m.DB.QueryRow(stmt, rowid).Scan(&p.ID, &p.ScreenName, &p.EmailAddress, &p.LastLogin)
 	if err != nil {
 		fmt.Println("[ERROR] Error encountered:", err.Error())
 		return nil, err
 	}
-	return s, nil
+	return p, nil
 }
 
 // insert new player
 func (m *PlayerModel) Insert(screenName string, emailAddress string, password string) (int, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 13)
 	if err != nil {
 		fmt.Println("[ERROR] Error generating hashed password")
 		return 0, err
@@ -67,6 +68,7 @@ func (m *PlayerModel) Insert(screenName string, emailAddress string, password st
 	if err != nil {
 		fmt.Println("[ERROR] Error:", err.Error())
 		if strings.Contains(err.Error(), "UNIQUE constraint failed:") {
+			// Our unique requirement for email address has been violated
 			return 0, models.ErrDuplicateEmail
 		} else {
 			return 0, err

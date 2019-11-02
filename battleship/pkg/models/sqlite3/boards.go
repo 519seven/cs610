@@ -184,6 +184,7 @@ func (m *BoardModel) List(userID int) ([]*models.Board, error) {
 		}
 	*/
 }
+
 func (m *BoardModel) Update(rowid int, boardName string, userID int, gameID int) (int, error) {
 	// to split over multpile lines, use backquotes not double quotes
 	stmt := `UPDATE Boards SET boardName = ?, userID = ?, gameID= ? WHERE rowid = ?`

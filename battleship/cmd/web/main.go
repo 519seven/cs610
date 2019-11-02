@@ -29,6 +29,14 @@ type application struct {
 	templateCache 	map[string]*template.Template
 }
 
+// Context - every http.Request that the handlers process has a context.Context object
+//           which we can use to store information during the lifetime of the request.
+//           Common use case is to pass information between 
+//           pieces of middleware and other handlers
+type contextKey string
+
+const contextKeyIsAuthenticated = contextKey("isAuthenticated")
+
 // Why models?
 // 1. Database logic isn't tied to our handlers which means that
 //    handler responsibilities are limited to HTTP stuff

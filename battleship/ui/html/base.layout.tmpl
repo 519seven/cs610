@@ -8,6 +8,7 @@
 		<link rel='stylesheet' href='/static/css/main.css'>
 		<link rel='shortcut icon' href='/static/img/favicon.ico' type='image/x-icon'>
 		<link rel='stylesheet' href='https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700'>
+		<script type='text/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js'></script>
 	</head>
 	<body>
 		<header>
@@ -28,12 +29,16 @@
 			{{end}}
 			{{block "accountActions" .}}
 			{{if .IsAuthenticated}}
-			<a href='/logout'>Logout</a>
+			<form action='/logout' method='POST'>
+				<!-- CSRF token //-->
+				<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
+			</form>
 			{{end}}
 			{{end}}
 			{{if not .IsAuthenticated}}
 			<a href='/login'>Login</a>
 			{{end}}
+			<!--<a href='/about'>About</a>//-->
 		</nav>
 		<main>
 			{{with .Flash}}

@@ -13,6 +13,8 @@ import (
 
 // Battle
 type templateDataBattle struct {
+	ActiveBoardID			int
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
@@ -22,6 +24,8 @@ type templateDataBattle struct {
 }
 // Board
 type templateDataBoard struct {
+	ActiveBoardID			int
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
@@ -32,6 +36,8 @@ type templateDataBoard struct {
 }
 // Board List
 type templateDataBoards struct {
+	ActiveBoardID			int
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
@@ -41,6 +47,7 @@ type templateDataBoards struct {
 }
 // Login
 type templateDataLogin struct {
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
@@ -49,6 +56,7 @@ type templateDataLogin struct {
 }
 // Player
 type templateDataPlayer struct {
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
@@ -58,6 +66,7 @@ type templateDataPlayer struct {
 }
 // Player List
 type templateDataPlayers struct {
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
@@ -67,6 +76,7 @@ type templateDataPlayers struct {
 }
 // Position
 type templateDataPosition struct {
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
@@ -76,6 +86,7 @@ type templateDataPosition struct {
 }
 // Sign-Up
 type templateDataSignup struct {
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form

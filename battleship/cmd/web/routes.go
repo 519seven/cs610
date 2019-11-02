@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/bmizerany/pat"	// router
-	"github.com/justinas/alice"	// middleware
+	"github.com/bmizerany/pat"		// router
+	"github.com/justinas/alice"		// middleware
 )
 
 // Update routes to make it return http.Handler rather than *http.ServeMux
@@ -13,11 +13,14 @@ func (app *application) routes() http.Handler {
 	// every request will use this middleware chain
 	standardMiddleware := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 
-	// Create a new middleware chain to accommodate our session middleware
-	dynamicMiddleware := alice.New(app.session.Enable)
+	// Create a new middleware chain to accommodate:
+	// a.) session middleware
+	// b.) csrf protection (noSurf)
+	dynamicMiddleware := alice.New(app.session.Enable, noSurf, app.authenticate)
 
 	mux := pat.New()
 	mux.Get("/", dynamicMiddleware.ThenFunc(app.home))
+	//mux.Get("/about", dynamicMiddleware.ThenFunc(app.about))
 	// More specific routes at the top, less specific routes follow...
 	// BATTLES
 	/*
@@ -32,7 +35,8 @@ func (app *application) routes() http.Handler {
 	mux.Post("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoard))			// save board info
 	mux.Get("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoardForm))		// display board if GET
 	mux.Get("/board/list", dynamicMiddleware.ThenFunc(app.listBoards))
-	mux.Get("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
+	mux.Post("/board/select", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.selectBoard))
+	mux.Post("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
 	mux.Get("/board/:id", dynamicMiddleware.ThenFunc(app.displayBoard))
 	// PLAYERS
 	mux.Get("/player/list", dynamicMiddleware.ThenFunc(app.listPlayers))
@@ -50,7 +54,7 @@ func (app *application) routes() http.Handler {
 	mux.Post("/signup", dynamicMiddleware.ThenFunc(app.postSignup))			// save player info
 	mux.Get("/login", dynamicMiddleware.ThenFunc(app.loginForm))
 	mux.Post("/login", dynamicMiddleware.ThenFunc(app.postLogin))
-	mux.Get("/logout", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.postLogout))
+	mux.Post("/logout", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.postLogout))
 	mux.Post("/updatePlayer", dynamicMiddleware.ThenFunc(app.updatePlayer))
 
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
