@@ -19,18 +19,21 @@ func (app *application) routes() http.Handler {
 	dynamicMiddleware := alice.New(app.session.Enable, noSurf, app.authenticate)
 
 	mux := pat.New()
+	// More specific routes at the top, less specific routes follow...
+
+	// Basics - home and about
 	mux.Get("/", dynamicMiddleware.ThenFunc(app.home))
 	//mux.Get("/about", dynamicMiddleware.ThenFunc(app.about))
-	// More specific routes at the top, less specific routes follow...
+
 	// BATTLES
+	// see if there are any challenges out there
+	mux.Get("/status/challenge", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.challengeStatus))
+	mux.Get("/status/confirm/:battleID", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.confirmStatus))
 	/*
-		mux.HandleFunc("/battle", app.displayBattle)
-		mux.HandleFunc("/battle/create", app.createBattle)
-		mux.HandleFunc("/battle/list", app.listBattle)
-		mux.HandleFunc("/battle/update", app.updateBattle)
+	mux.HandleFunc("/battle/create", app.createBattle)
+	mux.HandleFunc("/battle/list", app.listBattle)
+	mux.HandleFunc("/battle/update", app.updateBattle)
 	*/
-	// Update routes to use the new dynamic middleware chain for our session middleware
-	
 	// BOARDS
 	mux.Post("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoard))			// save board info
 	mux.Get("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoardForm))		// display board if GET

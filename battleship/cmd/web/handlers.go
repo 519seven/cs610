@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"golang.org/x/xerrors"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/519seven/cs610/battleship/pkg/forms"
 	"github.com/519seven/cs610/battleship/pkg/models"
@@ -51,9 +53,10 @@ func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// Add the ID of user to session - they are now "logged in"
+	// Update loggedIn in database
 	app.players.UpdateLogin(rowid, true)
 	app.session.Put(r, "authenticatedUserID", rowid)
+	app.session.Put(r, "screenName", form.Get("screenName"))
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
 // End postLogin
@@ -420,12 +423,14 @@ func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 
 // Challenge a Player
 func (app *application) challengePlayer(w http.ResponseWriter, r *http.Request) {
-	// Send a message to the selected player to tell them they have a challenger
+	// - The user that challenges is the challenger
+	// - The user that is being challenged is the challengee
 	err := r.ParseForm()
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
+	// The challengee is selected from a list of players
 	challengee := 0
 	form := forms.New(r.PostForm)
 	userID := form.Get("userID")
@@ -440,20 +445,22 @@ func (app *application) challengePlayer(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-	// First, update Battles
-	// - The user that challenges is the challenger
-	// - The user that is being challenged is the challengee
-	battleID := 0
-	bID, _ := strconv.Atoi(app.session.GetString(r, "battleID"))
+	// See if there is a battleID (why???)
+	//battleID := app.session.GetInt(r, "battleID")
 	//boardID := app.session.GetString(r, "boardID")
-	challenger, err := strconv.Atoi(app.session.GetString(r, "authenticatedUserID"))
-	if bID == 0 {
-		battleID, err = app.battles.Create(challenger, true, challengee, false)
+	
+	// The person who initiated the challenge is the one that has the primary session
+	challenger := app.session.GetInt(r, "authenticatedUserID")
+	// After creating a battle, return the battleID
+	battleID, err := app.battles.Create(challenger, challengee)
+	if err != nil {
+		app.serverError(w, err)
+		return
 	}
 	app.battles.UpdateChallenge(challenger, challengee, false, battleID)
 
 	// If things are successful, return user to player list
-	app.session.Put(r, "flash", "Challenge created!  Awaiting player acceptance")
+	app.session.Put(r, "flash", "Challenge created!  Awaiting player's response.")
 	http.Redirect(w, r, "/player/list", http.StatusSeeOther)
 }
 
@@ -539,5 +546,82 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 }
 
 // END POSITIONS
+// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// BEGIN STATUS
+
+// Update a position's pinColor
+func (app *application) challengeStatus(w http.ResponseWriter, r *http.Request) {
+	userID := app.session.GetInt(r, "authenticatedUserID")	// get from session??
+	challengerID, err := app.battles.GetChallenger(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	if challengerID != 0 {
+		p, err := app.players.Get(challengerID)
+		if err != nil {
+			if xerrors.Is(err, models.ErrNoRecord) {
+				app.notFound(w)
+			} else {
+				app.serverError(w, err)
+			}
+			return
+		}
+		// Create session key of "challenger" and redirect to list where you'd make a selection Yes/No
+		app.session.Put(r, "challenger", p.ScreenName)
+		//app.session.Put(r, "challenger", p.ScreenName)
+		//app.session.Put(r, "challenger", p.ScreenName)
+		type JsonResponse struct {
+			ChallengerID 	int 		`json:"challengerID"`
+			NextPage		string		`json:"redirect"`
+			Time			time.Time	`json:"timestamp"`
+		}
+		j := fmt.Sprintf(`{"challengerID":%d, "redirect":"/status/confirm"}`, challengerID)
+		bytes := []byte(j)
+
+		var JR JsonResponse
+		JR.Time = time.Now()
+		err = json.Unmarshal(bytes, &JR)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		out, err := json.Marshal(JR)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		app.renderJson(w, r, out)
+	} else {
+		// do nothing, there is no challenger
+		return
+	}
+}
+
+func (app *application) confirmStatus(w http.ResponseWriter, r *http.Request) {
+	battleID, err := strconv.Atoi(r.URL.Query().Get(":battleID"))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	b, err := app.battles.Get(battleID)
+	if err != nil {
+		if xerrors.Is(err, models.ErrNoRecord) {
+			app.notFound(w)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+	app.renderConfirmStatus(w, r, "status.confirm.page.tmpl", &templateDataBattle{
+		Battle: 			b,
+	})
+}
+
+// END STATUS
 // ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------

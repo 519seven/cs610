@@ -35,5 +35,33 @@
 			$('form').submit();
 		});
 	});
+	(function poll() {
+		var continuePolling = true;
+		var pageData;
+		setTimeout(function() {
+			$.ajax({
+				url: "/status/challenge",
+				type: "GET",
+				success: function(data) {
+					//jsonData = JSON.parse(data);					// don't need to parse, it's already json
+					console.log("a challenge awaits you");
+					continuePolling = false;
+					if (confirm('Would you like to view your new challenge?')) {
+						alert('Taking you to '+data.redirect);
+						$(location).attr('href', data.redirect);	// if attr doesn't work, use val
+					}else{
+						alert('Turning off polling for this visit.\nVisit '+data.redirect+' to view your challenge(s).');
+						alert('Next, made a menu item appear for users to click to see their challenges');
+					};
+				},
+				error: function(request,error) {
+					console.log("error")
+				},
+				dataType: "json",
+				complete: function() { if (continuePolling) { poll(); }},
+				timeout: 2000
+			})
+		}, 5000);
+	})();
 	</script>
 {{end}}

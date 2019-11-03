@@ -120,7 +120,7 @@ func (m *BoardModel) Insert(boardID int, shipName string, arrayOfCoords []string
 		err := rows.Scan(&shipID)
 		if err != nil {
 			//log.Fatal()
-			fmt.Println("[ERROR] retrieving shipID.  Unable to continue.  Error msg: ", err)
+			fmt.Println("ERROR - While retrieving shipID:", err)
 		}
 	}
 	err = rows.Err()

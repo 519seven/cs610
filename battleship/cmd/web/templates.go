@@ -19,6 +19,7 @@ type templateDataBattle struct {
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Battle      			*models.Battle
 	Battles     			[]*models.Battle
 }
@@ -30,6 +31,7 @@ type templateDataBoard struct {
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	PositionsOnBoard       	*models.PositionsOnBoard
 	PositionsOnBoards      	[]*models.PositionsOnBoard
 	MainGrid				template.HTML
@@ -42,6 +44,7 @@ type templateDataBoards struct {
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Board					*models.Board
 	Boards					[]*models.Board
 }
@@ -52,6 +55,7 @@ type templateDataLogin struct {
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Login      				*models.Login
 }
 // Player
@@ -61,6 +65,7 @@ type templateDataPlayer struct {
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
@@ -71,6 +76,7 @@ type templateDataPlayers struct {
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
@@ -81,6 +87,7 @@ type templateDataPosition struct {
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Position    			*models.Position
 	Positions   			[]*models.Position
 }
@@ -91,6 +98,7 @@ type templateDataSignup struct {
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Signup      			*models.Signup
 }
 

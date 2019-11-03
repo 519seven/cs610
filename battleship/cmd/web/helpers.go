@@ -157,6 +157,24 @@ func (app *application) preprocessBoard(r *http.Request) template.HTML {
 // automatically available each time we render a template
 // ----------------------------------------------------------------------------
 
+// Add default data to create battle interface
+func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Request) *templateDataBattle {
+	if td == nil {
+		td = &templateDataBattle{}
+	}
+	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
+	// Positions
+	//td.PositionsOnBoard = app.positionsOnBoard(r)
+	//td.PositionsOnBoards = app.positionsOnBoard(r)
+	// Add a new string containing processed template snippet
+	return td
+}
+
 // Add default data to create board interface
 func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Request) *templateDataBoard {
 	if td == nil {
@@ -167,6 +185,7 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	// Positions
 	//td.PositionsOnBoard = app.positionsOnBoard(r)
 	//td.PositionsOnBoards = app.positionsOnBoard(r)
@@ -191,6 +210,7 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
 
@@ -203,6 +223,7 @@ func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Reque
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
 
@@ -215,6 +236,7 @@ func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Req
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
 
@@ -227,6 +249,7 @@ func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.R
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
 
@@ -239,6 +262,7 @@ func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Req
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
 
@@ -281,6 +305,32 @@ func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, nam
 		return
 	}
 	buf.WriteTo(w)
+}
+
+// Confirm Status
+func (app *application) renderConfirmStatus(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattle) {
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataBattle(td, r))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)
+}
+
+// Return JSON
+func (app *application) renderJson(w http.ResponseWriter, r *http.Request, out []byte) {
+	// Convert challengerID to string so we can add more strings later
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(out)
 }
 
 // Login
