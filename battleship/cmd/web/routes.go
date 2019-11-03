@@ -27,8 +27,9 @@ func (app *application) routes() http.Handler {
 
 	// BATTLES
 	// see if there are any challenges out there
-	mux.Get("/status/challenge", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.challengeStatus))
-	mux.Get("/status/confirm/:battleID", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.confirmStatus))
+	mux.Get("/status/battles/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBattles))
+	mux.Get("/status/battles/", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.challengeStatus))
+	mux.Get("/status/battles/:battleID", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.confirmStatus))
 	/*
 	mux.HandleFunc("/battle/create", app.createBattle)
 	mux.HandleFunc("/battle/list", app.listBattle)
@@ -54,8 +55,9 @@ func (app *application) routes() http.Handler {
 		mux.HandleFunc("/ship/list", app.listShip)
 	*/
 	// AUTH
+	mux.Get("/freshstart", alice.New(app.session.Enable).ThenFunc(app.getSignupForm))
 	mux.Get("/signup", dynamicMiddleware.ThenFunc(app.getSignupForm))		// display form if GET
-	mux.Post("/signup", dynamicMiddleware.ThenFunc(app.postSignup))			// save player info
+	mux.Post("/signup", alice.New(app.session.Enable).ThenFunc(app.postSignup))			// save player info
 	mux.Get("/login", dynamicMiddleware.ThenFunc(app.loginForm))
 	mux.Post("/login", dynamicMiddleware.ThenFunc(app.postLogin))
 	mux.Post("/logout", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.postLogout))

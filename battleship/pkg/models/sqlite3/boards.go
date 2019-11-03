@@ -43,13 +43,41 @@ func MatchFound(coordinates string, stringOfCoords string) bool {
 	return false
 }
 
+// Choose Board - I can't store the boardID in my session so...
+// 				  update the database and keep one "selected" board at any given point in time
+func (m *BoardModel) ChooseBoard(rowid, boardID int, action string) (int, error) {
+	if action == "update" {
+		stmt := `UPDATE Boards SET isChosen = 0;`
+		_, err := m.DB.Exec(stmt)
+		if err != nil {
+			return 0, err
+		}
+		stmt = `UPDATE Boards SET isChosen = 1 WHERE rowid = ?`
+		_, err = m.DB.Exec(stmt, boardID)
+		if err != nil {
+			return 0, err
+		}
+		return boardID, nil
+	} else if action == "select" {
+		var boardID int
+		stmt := `SELECT rowid FROM Boards WHERE isChosen = 1;`
+		err := m.DB.QueryRow(stmt).Scan(&boardID)
+		if err != nil {
+			return 0, err
+		}
+		return boardID, nil
+	} else {
+		fmt.Println("Default action for ChooseBoard (nothing is happening, check logic)")
+		return boardID, nil
+	}
+}
+
 // Create a board if one with the same name doesn't already exist (belonging to this user)
-func (m *BoardModel) Create(boardName string) (int, error) {
+func (m *BoardModel) Create(rowid int, boardName string) (int, error) {
 	var boardID int64
-	userID := 1 												// get from secure location
 	// first check to make sure a board with the same name doesn't already exist
-	stmt := `SELECT rowid FROM BOARDS WHERE boardName = ? AND userID = ?`
-	err := m.DB.QueryRow(stmt, boardName, userID).Scan(boardID)
+	stmt := `SELECT rowid FROM Boards WHERE boardName = ? AND userID = ?`
+	err := m.DB.QueryRow(stmt, boardName, rowid).Scan(boardID)
 	if err != nil && err.Error() != "sql: no rows in result set" {
 		fmt.Println("[ERROR] Error encountered, returning to calling func:", err.Error())
 		return 0, err
@@ -59,7 +87,7 @@ func (m *BoardModel) Create(boardName string) (int, error) {
 	}
 	fmt.Println("Creating new board...")
 	stmt = `INSERT INTO Boards (boardName, userID) VALUES (?, ?)`
-	result, err := m.DB.Exec(stmt, boardName, userID)
+	result, err := m.DB.Exec(stmt, boardName, rowid)
 	if err != nil {
 		return 0, err
 	}
@@ -81,8 +109,10 @@ func (m *BoardModel) Get(rowid int) (*models.PositionsOnBoard, error) {
 		s.rowid = p.shipID
 		WHERE b.rowid = ?` // and userID = this user's ID
 	p := &models.PositionsOnBoard{}
-	err := m.DB.QueryRow(stmt, rowid).Scan(&p.BoardID, &p.BoardName, &p.OwnerID, &p.GameID, &p.Created,
-		&p.PositionID, &p.ShipType, &p.UserID, &p.CoordX, &p.CoordY, &p.PinColor)
+	err := m.DB.QueryRow(stmt, rowid).Scan(
+			&p.BoardID, &p.BoardName, &p.OwnerID, &p.GameID, 
+			&p.Created, &p.PositionID, &p.ShipType, &p.UserID, 
+			&p.CoordX, &p.CoordY, &p.PinColor)
 	if err != nil {
 		if xerrors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNoRecord
@@ -145,12 +175,12 @@ func (m *BoardModel) Insert(boardID int, shipName string, arrayOfCoords []string
 	return 0, nil
 }
 
-func (m *BoardModel) List(userID int) ([]*models.Board, error) {
+func (m *BoardModel) List(rowid int) ([]*models.Board, error) {
 	stmt := `SELECT rowid, boardName, userID, gameID, created FROM Boards 
 	WHERE userID = ?
 	ORDER BY created DESC LIMIT 10`
 
-	rows, err := m.DB.Query(stmt, userID)
+	rows, err := m.DB.Query(stmt, rowid)
 	if err != nil {
 		return nil, err
 	}
@@ -172,17 +202,6 @@ func (m *BoardModel) List(userID int) ([]*models.Board, error) {
 	}
 
 	return boards, nil
-	/*
-		s, err := app.boards.List()
-		if err != nil {
-			app.serverError(w, err)
-			return
-		}
-
-		for _, board := range s {
-			fmt.Fprintf(w, "%v\n", board)
-		}
-	*/
 }
 
 func (m *BoardModel) Update(rowid int, boardName string, userID int, gameID int) (int, error) {

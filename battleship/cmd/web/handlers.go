@@ -88,11 +88,14 @@ func (app *application) getSignupForm(w http.ResponseWriter, r *http.Request) {
 func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 	// Create a new forms.Form struct containing the POSTed data from the
 	//  form, then use the validation methods to check the content.
+	fmt.Println("here...")
 	err := r.ParseForm()
 	if err != nil {
+		fmt.Println("Form is empty")
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
+
 	form := forms.New(r.PostForm)
 	form.Required("screenName")
 	form.MaxLength("screenName", 16)
@@ -124,6 +127,7 @@ func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.session.Put(r, "flash", "Your signup was successful. Please log in.")
+	app.session.Remove(r, "authenticatedUserID")
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 // End postSignup
@@ -200,10 +204,37 @@ func (app *application) about(w http.ResponseWriter, r *http.Request) {
 
 // ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
+// BEGIN BATTLES
+
+// List battles
+func (app *application) listBattles(w http.ResponseWriter, r *http.Request) {
+	userID := app.session.GetInt(r, "authenticatedUserID")
+	b, err := app.battles.GetChallenges(userID)
+	if err != nil {
+		if xerrors.Is(err, models.ErrNoRecord) {
+			app.notFound(w)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+
+	app.renderBattles(w, r, "list.challenges.page.tmpl", &templateDataBattles{
+		Battles: 			b,
+	})
+}
+
+// END BATTLES
+// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // BEGIN BOARDS
 
 // Create a new board
 func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
+	userID := app.session.GetInt(r, "authenticatedUserID")
 	// POST /create/board
 	err := r.ParseForm()
 	if err != nil {
@@ -283,7 +314,8 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 	form.ValidNumberOfItems(submarine, "submarine")
 	form.ValidNumberOfItems(destroyer, "destroyer")
 
-	// If our validation has failed anywhere along the way, bail
+	// If our validation has failed anywhere along the way
+	// - Take the user back to their board
 	if !form.Valid() {
 		// helper
 		app.renderBoard(w, r, "create.board.page.tmpl", &templateDataBoard{Form: form})
@@ -294,7 +326,7 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 	// - We have a boardID, userID, shipName, and a bunch of coordinates
 
 	// Create a new board, return boardID
-	boardID, _ := app.boards.Create(form.Get("boardName"))
+	boardID, _ := app.boards.Create(userID, form.Get("boardName"))
 
 	// Carrier
 	_, err = app.boards.Insert(boardID, "carrier", carrier)
@@ -362,7 +394,7 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	app.renderBoard(w, r, "create.board.page.tmpl", &templateDataBoard{
+	app.renderBoard(w, r, "display.board.page.tmpl", &templateDataBoard{
 		PositionsOnBoard: 	s,
 	})
 
@@ -372,6 +404,8 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	// the userID should be in a session somewhere
 	userID := app.session.GetInt(r, "authenticatedUserID")
+	boardID := app.session.GetInt(r, "boardID")
+	fmt.Println("boardID immediately after setting it is:", boardID)
 	s, err := app.boards.List(userID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
@@ -390,11 +424,16 @@ func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 // Select
 func (app *application) selectBoard(w http.ResponseWriter, r*http.Request) {
 	form := forms.New(r.PostForm)
-	boardID := form.Get("boardID")
-	fmt.Println("submitted boardID:", boardID)
-	// make sure my boardID belong to this user
-	app.session.Put(r, "boardID", boardID)
+	boardID, err := strconv.Atoi(form.Get("boardID"))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
 	app.session.Put(r, "flash", "Board selected!")
+
+	app.session.Remove(r, "boardID")
+	app.session.Put(r, "boardID", boardID)
+	fmt.Println(app.session.GetInt(r, "boardID"))
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
 
@@ -423,45 +462,96 @@ func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 
 // Challenge a Player
 func (app *application) challengePlayer(w http.ResponseWriter, r *http.Request) {
-	// - The user that challenges is the challenger
-	// - The user that is being challenged is the challengee
+	// - The user that challenges is the challenger (player1)
+	// - The user that is being challenged is the challengee (player2)
 	err := r.ParseForm()
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
-	// The challengee is selected from a list of players
-	challengee := 0
+	// Player1 information is retrieved from session object
+	player1ID := app.session.GetInt(r, "authenticatedUserID")
+	player1BoardID := app.session.GetInt(r, "boardID")
+	fmt.Println("Player1 boardID is", player1BoardID)
+	if player1BoardID < 1 {
+		app.session.Put(r, "flash", "You must select your board first, then issue a challenge!")
+		http.Redirect(w, r, "/board/list", http.StatusSeeOther)
+	}
+	// Player2 information is retrieved from form
+	player2ID := 0
 	form := forms.New(r.PostForm)
 	userID := form.Get("userID")
 	if userID == "" {
 		//app.serverError(w, )
-		fmt.Println("challengee ID is empty")
+		fmt.Println("player2ID is empty")
 		return
 	} else {
-		challengee, err = strconv.Atoi(userID)
+		player2ID, err = strconv.Atoi(userID)
 		if err != nil {
-			fmt.Println("challengee ID is empty")
+			fmt.Println("player2ID is empty")
 			return
 		}
 	}
-	// See if there is a battleID (why???)
-	//battleID := app.session.GetInt(r, "battleID")
-	//boardID := app.session.GetString(r, "boardID")
-	
-	// The person who initiated the challenge is the one that has the primary session
-	challenger := app.session.GetInt(r, "authenticatedUserID")
-	// After creating a battle, return the battleID
-	battleID, err := app.battles.Create(challenger, challengee)
+	_, err = app.battles.Create(player1ID, player1BoardID, player2ID)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-	app.battles.UpdateChallenge(challenger, challengee, false, battleID)
+	// This "update" now happens in "Create" - not ideal!
+	//app.battles.UpdateChallenge(player1ID, player2ID, false, battleID)
 
 	// If things are successful, return user to player list
 	app.session.Put(r, "flash", "Challenge created!  Awaiting player's response.")
 	http.Redirect(w, r, "/player/list", http.StatusSeeOther)
+}
+
+// Find out if there are any challenges for the user
+func (app *application) challengeStatus(w http.ResponseWriter, r *http.Request) {
+	// If we have a challenge, return JSON to client
+	userID := app.session.GetInt(r, "authenticatedUserID")	// get from session??
+	challengerID, err := app.battles.GetChallenger(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	if challengerID > 0 {
+		type JsonResponse struct {
+			Status 			string 		`json:"status"`
+			NextPage		string		`json:"redirect"`
+			Time			time.Time	`json:"timestamp"`
+		}
+		redirect := "/status/battles/list"
+		var JR JsonResponse
+		JR.Status = "challenge"
+		JR.NextPage = redirect
+		JR.Time = time.Now()
+
+		out, err := json.Marshal(JR)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		app.renderJson(w, r, out)
+	} else {
+		// do nothing
+		return
+	}
+}
+
+func (app *application) confirmStatus(w http.ResponseWriter, r *http.Request) {
+	userID := app.session.GetInt(r, "authenticatedUserID")
+	b, err := app.battles.GetOpen(userID, 0)
+	if err != nil {
+		if xerrors.Is(err, models.ErrNoRecord) {
+			app.notFound(w)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+	app.renderConfirmStatus(w, r, "status.confirm.page.tmpl", &templateDataBattle{
+		Battles: 			b,
+	})
 }
 
 // Display player
@@ -487,7 +577,8 @@ func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
 
 // List players
 func (app *application) listPlayers(w http.ResponseWriter, r *http.Request) {
-	p, err := app.players.List("loggedIn")
+	userID := app.session.GetInt(r, "authenticatedUserID")
+	p, err := app.players.List(userID, "loggedIn")
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
@@ -546,82 +637,5 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 }
 
 // END POSITIONS
-// ----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-// BEGIN STATUS
-
-// Update a position's pinColor
-func (app *application) challengeStatus(w http.ResponseWriter, r *http.Request) {
-	userID := app.session.GetInt(r, "authenticatedUserID")	// get from session??
-	challengerID, err := app.battles.GetChallenger(userID)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	if challengerID != 0 {
-		p, err := app.players.Get(challengerID)
-		if err != nil {
-			if xerrors.Is(err, models.ErrNoRecord) {
-				app.notFound(w)
-			} else {
-				app.serverError(w, err)
-			}
-			return
-		}
-		// Create session key of "challenger" and redirect to list where you'd make a selection Yes/No
-		app.session.Put(r, "challenger", p.ScreenName)
-		//app.session.Put(r, "challenger", p.ScreenName)
-		//app.session.Put(r, "challenger", p.ScreenName)
-		type JsonResponse struct {
-			ChallengerID 	int 		`json:"challengerID"`
-			NextPage		string		`json:"redirect"`
-			Time			time.Time	`json:"timestamp"`
-		}
-		j := fmt.Sprintf(`{"challengerID":%d, "redirect":"/status/confirm"}`, challengerID)
-		bytes := []byte(j)
-
-		var JR JsonResponse
-		JR.Time = time.Now()
-		err = json.Unmarshal(bytes, &JR)
-		if err != nil {
-			app.serverError(w, err)
-			return
-		}
-		out, err := json.Marshal(JR)
-		if err != nil {
-			app.serverError(w, err)
-			return
-		}
-		app.renderJson(w, r, out)
-	} else {
-		// do nothing, there is no challenger
-		return
-	}
-}
-
-func (app *application) confirmStatus(w http.ResponseWriter, r *http.Request) {
-	battleID, err := strconv.Atoi(r.URL.Query().Get(":battleID"))
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	b, err := app.battles.Get(battleID)
-	if err != nil {
-		if xerrors.Is(err, models.ErrNoRecord) {
-			app.notFound(w)
-		} else {
-			app.serverError(w, err)
-		}
-		return
-	}
-	app.renderConfirmStatus(w, r, "status.confirm.page.tmpl", &templateDataBattle{
-		Battle: 			b,
-	})
-}
-
-// END STATUS
 // ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------

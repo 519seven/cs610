@@ -23,6 +23,18 @@ type templateDataBattle struct {
 	Battle      			*models.Battle
 	Battles     			[]*models.Battle
 }
+// Battles
+type templateDataBattles struct {
+	ActiveBoardID			int
+	CSRFToken				string
+	CurrentYear 			int
+	Flash					string
+	Form					*forms.Form
+	IsAuthenticated			bool
+	ScreenName				string
+	Battle      			*models.Battle
+	Battles     			[]*models.Battle
+}
 // Board
 type templateDataBoard struct {
 	ActiveBoardID			int
@@ -90,6 +102,7 @@ type templateDataPosition struct {
 	ScreenName				string
 	Position    			*models.Position
 	Positions   			[]*models.Position
+	MainGrid				template.HTML
 }
 // Sign-Up
 type templateDataSignup struct {

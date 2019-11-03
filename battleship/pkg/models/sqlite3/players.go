@@ -49,8 +49,22 @@ func (m *PlayerModel) Get(rowid int) (*models.Player, error) {
 	stmt := `SELECT rowid, screenName, emailAddress, lastLogin FROM Players WHERE rowid = ?`
 	err := m.DB.QueryRow(stmt, rowid).Scan(&p.ID, &p.ScreenName, &p.EmailAddress, &p.LastLogin)
 	if err != nil {
-		fmt.Println("ERROR - ", err.Error())
-		return nil, err
+		fmt.Println("ERROR [players.Get 1] - ", err.Error())
+		// if this result set is empty, there could be two reasons
+		// a.) somebody is trying to hack me by submitting a bogus rowid
+		// b.) the database has been deleted
+		// so, let's check the database for users.  If there are none, delete session and return to login screen
+		//f := PlayerModel{}
+		//_, err = f.List(0, "")
+		if err != nil {
+			fmt.Println("ERROR [players.Get 3] - empty result set")
+			// then our result set is empty
+			return p, errors.New("empty")
+		} else {
+			// somebody is trying to hack us
+			fmt.Println("ERROR [players.Get 2] - ", err.Error())
+			return nil, err
+		}
 	}
 	fmt.Println("INFO - Returning player information to authenticate middleware")
 	return p, nil
@@ -85,14 +99,24 @@ func (m *PlayerModel) Insert(screenName string, emailAddress string, password st
 }
 
 // list players
-func (m *PlayerModel) List(status string) ([]*models.Player, error) {
+func (m *PlayerModel) List(rowid int, status string) ([]*models.Player, error) {
 	stmt := `SELECT rowid, screenName, emailAddress, loggedIn, inBattle, created, lastLogin FROM Players`
 	if status == "loggedIn" {
 		stmt += " WHERE loggedIn = 1"
+		if rowid != 0 {
+			stmt += " AND rowid != ?"
+		}
+	} else if rowid != 0 {
+		stmt += " WHERE rowid != ?"
 	}
-	rows, err := m.DB.Query(stmt)
+	fmt.Println("INFO [players.List 1]", stmt)
+	if err := m.DB.QueryRow(stmt); err != nil {
+		fmt.Println("ERROR - Empty result set")
+	}
+	fmt.Println("here...")
+	rows, err := m.DB.Query(stmt, rowid)
 	if err != nil {
-		fmt.Println("[ERROR] Error:", err.Error())
+		fmt.Println("ERROR [players.List 1] stmt", stmt, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -103,16 +127,20 @@ func (m *PlayerModel) List(status string) ([]*models.Player, error) {
 		s := &models.Player{}
 		err = rows.Scan(&s.ID, &s.ScreenName, &s.EmailAddress, &s.LoggedIn, &s.InBattle, &s.Created, &s.LastLogin)
 		if err != nil {
-			fmt.Println("[ERROR] Error:", err.Error())
+			fmt.Println("ERROR [players.List 2] Error:", err.Error())
 			return nil, err
 		}
 		players = append(players, s)
 	}
+	fmt.Println("there...")
 	if err = rows.Err(); err != nil {
 		//fmt.Println("[ERROR] Error:", err.Error())
 		return nil, err
 	}
-
+	fmt.Println("there...")
+	if rowid == 0 && status == "" && len(players) == 0 {
+		return nil, errors.New("empty")
+	}
 	return players, nil
 }
 

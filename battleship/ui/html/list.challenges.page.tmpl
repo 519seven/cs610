@@ -1,25 +1,25 @@
 {{template "base" .}}
 
-{{define "title"}}Your Saved Boards{{end}}
+{{define "title"}}Your Battles{{end}}
 
 {{define "main"}}
-	{{if .Boards}}
-		<form name=selectBoard action='/board/select' method=POST>
+	{{if .Battles}}
+		<form name=selectBoard action='/battle/select' method=POST>
 		<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
-		{{with .Boards}}
+		{{with .Battles}}
 		<table>
 			<tr>
-				<th>Select</th>
-				<td>Created</th>
-				<th>Title</th>
-				<th>Game ID</th>
-				<th>Battle result</th>
+				<th>Enter</th>
+				<td>Opponent</th>
+				<th>Board Name</th>
+				<th>Active</th>
+				<th>Result</th>
 			</tr>
 			{{range .}}
-			<tr>												<!-- Access parent object passed to Execute //-->
-				<td><input type=radio name=boardID value="{{.ID}}" {{if eq $.ActiveBoardID .ID}}checked{{end}}></td>
-				<td>{{humanDate .Created}}</td>
-				<td><a href="/board/{{.ID}}">{{.Title}}</a></td>
+			<tr>
+				<td><input type=radio name=battleID value="{{.ID}}"></td>
+				<td>{{.Player1ScreenName}}</td>
+				<td><a href="/board/{{.ID}}">{{.BoardTitle}}</a></td>
 				<td>{{if not .GameID}}{{.GameID}}{{end}}</td>
 				<td>In progress|Win|Loss</td>
 			</tr>
@@ -33,7 +33,7 @@
 	<a href="/board/create">Create a new board</a>
 	<script type='text/javascript'>
 	$(document).ready(function() { 
-		$('input[name=boardID]').change(function(){
+		$('input[name=battleID]').change(function(){
     	    $('form').submit();
    		});
   	});

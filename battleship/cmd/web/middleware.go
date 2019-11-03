@@ -73,9 +73,14 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		fmt.Println("authenticatedUserID exists?:", exists)
 
 		// fetch details of current user from database
-		// if not matching record was found, remove their session info
+		// if no matching record was found, remove their session info
 		// and call the next handler in the chain as normal
 		player, err := app.players.Get(app.session.GetInt(r, "authenticatedUserID"))
+		if err != nil {
+			if app.session != nil {
+				app.session.Remove(r, "authenticatedUserID")
+			}
+		}
 		fmt.Println("Player ID:", player.ID)
 
 		if player.ID == 0 {					// or no rows in the result set

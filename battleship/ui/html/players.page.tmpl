@@ -27,7 +27,7 @@
 		</table>
 		{{end}}
 	{{else}}
-		<p>Nothing to see just yet</p>
+		<p>There are no other players logged in at this moment.</p>
 	{{end}}
 	<script type='text/javascript'>
 	$(document).ready(function() { 
@@ -40,11 +40,11 @@
 		var pageData;
 		setTimeout(function() {
 			$.ajax({
-				url: "/status/challenge",
+				url: "/status/battles",
 				type: "GET",
 				success: function(data) {
 					//jsonData = JSON.parse(data);					// don't need to parse, it's already json
-					console.log("a challenge awaits you");
+					console.log("a challenger awaits you");
 					continuePolling = false;
 					if (confirm('Would you like to view your new challenge?')) {
 						alert('Taking you to '+data.redirect);
