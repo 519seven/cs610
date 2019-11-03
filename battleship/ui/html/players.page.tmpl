@@ -4,10 +4,12 @@
 
 {{define "main"}}
 	{{if .Players}}
+		<form name=selectBoard action='/player/challenge' method=POST>
+		<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
 		{{with .Players}}
 		<table>
 			<tr>
-				<th>ID</th>
+				<th>Challenge?</th>
 				<th>Screen Name</th>
 				<th>E-mail Address</th>
 				<th>Logged In?</th>
@@ -15,7 +17,7 @@
 			</tr>
 			{{range .}}
 			<tr>
-				<td>{{.ID}}</td>
+				<td><input type=radio name=userID value={{.ID}}></td>
 				<td>{{.ScreenName}}</td>
 				<td>{{.EmailAddress}}</td>
 				<td>{{.LoggedIn}}</td>
@@ -27,4 +29,11 @@
 	{{else}}
 		<p>Nothing to see just yet</p>
 	{{end}}
+	<script type='text/javascript'>
+	$(document).ready(function() { 
+		$('input[name=userID]').change(function(){
+			$('form').submit();
+		});
+	});
+	</script>
 {{end}}

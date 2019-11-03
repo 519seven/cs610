@@ -49,9 +49,10 @@ func (m *PlayerModel) Get(rowid int) (*models.Player, error) {
 	stmt := `SELECT rowid, screenName, emailAddress, lastLogin FROM Players WHERE rowid = ?`
 	err := m.DB.QueryRow(stmt, rowid).Scan(&p.ID, &p.ScreenName, &p.EmailAddress, &p.LastLogin)
 	if err != nil {
-		fmt.Println("[ERROR] Error encountered:", err.Error())
+		fmt.Println("ERROR - ", err.Error())
 		return nil, err
 	}
+	fmt.Println("INFO - Returning player information to authenticate middleware")
 	return p, nil
 }
 
@@ -59,14 +60,14 @@ func (m *PlayerModel) Get(rowid int) (*models.Player, error) {
 func (m *PlayerModel) Insert(screenName string, emailAddress string, password string) (int, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 13)
 	if err != nil {
-		fmt.Println("[ERROR] Error generating hashed password")
+		fmt.Println("ERROR - Error generating hashed password")
 		return 0, err
 	}
 
 	stmt := `INSERT INTO Players (screenName, emailAddress, hashedPassword, created, loggedIn, lastLogin) VALUES (?, ?, ?, ?, ?, ?)`
 	result, err := m.DB.Exec(stmt, screenName, emailAddress, hashedPassword, time.Now(), 0, time.Now())
 	if err != nil {
-		fmt.Println("[ERROR] Error:", err.Error())
+		fmt.Println("ERROR - ", err.Error())
 		if strings.Contains(err.Error(), "UNIQUE constraint failed:") {
 			// Our unique requirement for email address has been violated
 			return 0, models.ErrDuplicateEmail
@@ -84,8 +85,11 @@ func (m *PlayerModel) Insert(screenName string, emailAddress string, password st
 }
 
 // list players
-func (m *PlayerModel) List() ([]*models.Player, error) {
+func (m *PlayerModel) List(status string) ([]*models.Player, error) {
 	stmt := `SELECT rowid, screenName, emailAddress, loggedIn, inBattle, created, lastLogin FROM Players`
+	if status == "loggedIn" {
+		stmt += " WHERE loggedIn = 1"
+	}
 	rows, err := m.DB.Query(stmt)
 	if err != nil {
 		fmt.Println("[ERROR] Error:", err.Error())
@@ -105,7 +109,7 @@ func (m *PlayerModel) List() ([]*models.Player, error) {
 		players = append(players, s)
 	}
 	if err = rows.Err(); err != nil {
-		fmt.Println("[ERROR] Error:", err.Error())
+		//fmt.Println("[ERROR] Error:", err.Error())
 		return nil, err
 	}
 
@@ -117,7 +121,20 @@ func (m *PlayerModel) Update(id int, emailAddress string) (int, error) {
 	stmt := `UPDATE Players SET emailAddress = ?, lastLogin = ? WHERE rowid = ?`
 	_, err := m.DB.Exec(stmt, emailAddress, time.Now(), id)
 	if err != nil {
-		fmt.Println("[ERROR] Error:", err.Error())
+		//fmt.Println("[ERROR] Error:", err.Error())
+		if xerrors.Is(err, sql.ErrNoRows) {
+			return id, models.ErrNoRecord
+		}
+	}
+	return id, err
+}
+
+// update login
+func (m *PlayerModel) UpdateLogin(id int, loggedIn bool) (int, error) {
+	stmt := `UPDATE Players SET lastLogin = ?, loggedIn = ? WHERE rowid = ?`
+	_, err := m.DB.Exec(stmt, time.Now(), loggedIn, id)
+	if err != nil {
+		//fmt.Println("[ERROR] Error encountered:", err.Error())
 		if xerrors.Is(err, sql.ErrNoRows) {
 			return id, models.ErrNoRecord
 		}

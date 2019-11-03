@@ -34,16 +34,17 @@ func (app *application) routes() http.Handler {
 	// BOARDS
 	mux.Post("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoard))			// save board info
 	mux.Get("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoardForm))		// display board if GET
-	mux.Get("/board/list", dynamicMiddleware.ThenFunc(app.listBoards))
+	mux.Get("/board/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBoards))
 	mux.Post("/board/select", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.selectBoard))
 	mux.Post("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
 	mux.Get("/board/:id", dynamicMiddleware.ThenFunc(app.displayBoard))
 	// PLAYERS
-	mux.Get("/player/list", dynamicMiddleware.ThenFunc(app.listPlayers))
-	mux.Get("/player/update/:id", dynamicMiddleware.ThenFunc(app.updatePlayer))
-	mux.Get("/player/:id", dynamicMiddleware.ThenFunc(app.displayPlayer))
+	mux.Post("/player/challenge", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.challengePlayer))
+	mux.Get("/player/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listPlayers))
+	mux.Get("/player/update/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.updatePlayer))
+	mux.Get("/player/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.displayPlayer))
 	// POSITIONS
-	mux.Get("/position/update/:id", dynamicMiddleware.ThenFunc(app.updatePosition))
+	mux.Get("/position/update/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.updatePosition))
 	// SHIPS
 	/*
 		mux.HandleFunc("/ship", app.selectShip)
@@ -55,7 +56,7 @@ func (app *application) routes() http.Handler {
 	mux.Get("/login", dynamicMiddleware.ThenFunc(app.loginForm))
 	mux.Post("/login", dynamicMiddleware.ThenFunc(app.postLogin))
 	mux.Post("/logout", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.postLogout))
-	mux.Post("/updatePlayer", dynamicMiddleware.ThenFunc(app.updatePlayer))
+	mux.Post("/updatePlayer", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.updatePlayer))
 
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	// remove a specific prefix from the request's URL path

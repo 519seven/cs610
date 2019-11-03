@@ -52,6 +52,7 @@ func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Add the ID of user to session - they are now "logged in"
+	app.players.UpdateLogin(rowid, true)
 	app.session.Put(r, "authenticatedUserID", rowid)
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
@@ -60,7 +61,8 @@ func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 // Begin postLogout
 func (app *application) postLogout(w http.ResponseWriter, r *http.Request) {
 	// "log out" the user by removing their ID from the session
-	app.session.Remove(r, "authenticatedUserID")
+	rowid := app.session.PopInt(r, "authenticatedUserID")
+	app.players.UpdateLogin(rowid, false)
 	app.session.Put(r, "flash", "You've been logged out successfully")
 	http.Redirect(w, r, "/login", 303)
 }
@@ -164,7 +166,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 // ----------------------------------------------------------------------------
 // BEGIN ABOUT
 
-// Home
+// ABOUT
 // - A method against *application
 func (app *application) about(w http.ResponseWriter, r *http.Request) {
 	// write board data
@@ -230,7 +232,7 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 		rowStr := strconv.Itoa(row)
  		for _, col := range "ABCDEFGHIJ" {
 			colStr := string(col)
-			shipXY := r.PostForm.Get("shipXY"+rowStr+colStr)
+			shipXY := form.Get("shipXY"+rowStr+colStr)
 			if shipXY != "" {
 				// Only I, the program, should be permitted to update this as a player enters a game
 				//gameID := r.URL.Query().Get("gameID")
@@ -366,11 +368,7 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 // List boards
 func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	// the userID should be in a session somewhere
-	userID := 1
-	if userID < 1 {
-		app.notFound(w)
-		return
-	}
+	userID := app.session.GetInt(r, "authenticatedUserID")
 	s, err := app.boards.List(userID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
@@ -380,6 +378,7 @@ func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	app.renderBoards(w, r, "list.boards.page.tmpl", &templateDataBoards{
 		Boards: 			s,
 	})
@@ -419,15 +418,47 @@ func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 // -----------------------------------------------------------------------------
 // BEGIN PLAYERS
 
-// Display player
-func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
-	// Allow GET method only
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		app.clientError(w, http.StatusMethodNotAllowed)
+// Challenge a Player
+func (app *application) challengePlayer(w http.ResponseWriter, r *http.Request) {
+	// Send a message to the selected player to tell them they have a challenger
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
 		return
 	}
+	challengee := 0
+	form := forms.New(r.PostForm)
+	userID := form.Get("userID")
+	if userID == "" {
+		//app.serverError(w, )
+		fmt.Println("challengee ID is empty")
+		return
+	} else {
+		challengee, err = strconv.Atoi(userID)
+		if err != nil {
+			fmt.Println("challengee ID is empty")
+			return
+		}
+	}
+	// First, update Battles
+	// - The user that challenges is the challenger
+	// - The user that is being challenged is the challengee
+	battleID := 0
+	bID, _ := strconv.Atoi(app.session.GetString(r, "battleID"))
+	//boardID := app.session.GetString(r, "boardID")
+	challenger, err := strconv.Atoi(app.session.GetString(r, "authenticatedUserID"))
+	if bID == 0 {
+		battleID, err = app.battles.Create(challenger, true, challengee, false)
+	}
+	app.battles.UpdateChallenge(challenger, challengee, false, battleID)
+
+	// If things are successful, return user to player list
+	app.session.Put(r, "flash", "Challenge created!  Awaiting player acceptance")
+	http.Redirect(w, r, "/player/list", http.StatusSeeOther)
+}
+
+// Display player
+func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
 	playerID, err := strconv.Atoi(r.URL.Query().Get(":id"))
 	if err != nil || playerID < 1 {
 		app.notFound(w)
@@ -449,13 +480,7 @@ func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
 
 // List players
 func (app *application) listPlayers(w http.ResponseWriter, r *http.Request) {
-	// the userID should be in a session somewhere
-	userID := 123
-	if userID < 1 {
-		app.notFound(w)
-		return
-	}
-	s, err := app.players.List()
+	p, err := app.players.List("loggedIn")
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
@@ -465,7 +490,7 @@ func (app *application) listPlayers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.renderPlayers(w, r, "players.page.tmpl", &templateDataPlayers{
-		Players: 			s,
+		Players: 			p,
 	})
 }
 

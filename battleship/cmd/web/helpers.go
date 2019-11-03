@@ -42,7 +42,10 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	// create the tables if they don't exist
 	// in sqlite3, a unique, auto-incrementing rowid is automatically created
 	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS Battles 
-		(player1ID INTEGER, player2ID INTEGER, turn INTEGER)`)
+		(player1ID INTEGER, player1Accepted BOOLEAN, 
+		 player2ID INTEGER, player2Accepted BOOLEAN,
+		 challengeDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+		 turn INTEGER)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
 		(boardName TEXT, userID INTEGER, gameID INTEGER, 
@@ -119,8 +122,10 @@ func (app *application) checkRelationship(resourceID int) bool {
 
 // For Authorization
 func (app *application) isAuthenticated(r *http.Request) bool {
+	fmt.Println("Inspecting context for authentication...")
 	isAuthenticated, ok := r.Context().Value(contextKeyIsAuthenticated).(bool)
 	if !ok {
+		fmt.Println("isAuthenticated returned false!")
 		return false
 	}
 	return isAuthenticated
@@ -175,11 +180,13 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	if td == nil {
 		td = &templateDataBoards{}
 	}
-	boardID, err := strconv.Atoi(app.session.GetString(r, "boardID"))
-	if err != nil {
-		fmt.Println("[INFO] boardID is", err)
+	boardID := app.session.GetString(r, "boardID")
+	if boardID != "" {
+		bID, _ := strconv.Atoi(boardID)
+		td.ActiveBoardID = bID
+	} else {
+		fmt.Println("boardID is empty")
 	}
-	td.ActiveBoardID = boardID
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
@@ -279,6 +286,7 @@ func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, nam
 // Login
 func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name string, td *templateDataLogin) {
 	// retrieve based on page name or call serverError helper
+	fmt.Println("here 2...")
 	ts, ok := app.templateCache[name]
 	if !ok {
 		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
@@ -289,6 +297,15 @@ func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
 	err := ts.Execute(buf, app.addDefaultDataLogin(td, r))
+	
+	// Remove session information
+	if app.session != nil {
+		app.session.Remove(r, "authenticatedUserID")
+		app.session.Remove(r, "boardID")
+		app.session.Remove(r, "battleID")
+		fmt.Println("Session information has been removed...")
+	}
+
 	if err != nil {
 		app.serverError(w, err)
 		return

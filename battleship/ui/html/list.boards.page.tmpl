@@ -20,7 +20,7 @@
 				<td><input type=radio name=boardID value="{{.ID}}" {{if eq $.ActiveBoardID .ID}}checked{{end}}></td>
 				<td>{{humanDate .Created}}</td>
 				<td><a href="/board/{{.ID}}">{{.Title}}</a></td>
-				<td>{{.GameID}}</td>
+				<td>{{if not .GameID}}{{.GameID}}{{end}}</td>
 				<td>In progress|Win|Loss</td>
 			</tr>
 			{{end}}
@@ -37,5 +37,5 @@
     	    $('form').submit();
    		});
   	});
-</script>
+	</script>
 {{end}}

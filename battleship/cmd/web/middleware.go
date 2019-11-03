@@ -63,18 +63,26 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 func (app *application) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// check if authenticatedUserID is present; if not, call the next handler
+		fmt.Println("checking for authenticatedUserID")
 		exists := app.session.Exists(r, "authenticatedUserID")
 		if !exists {
+			fmt.Println("authenticatedUserID does not exist")
 			next.ServeHTTP(w, r)
 			return
 		}
+		fmt.Println("authenticatedUserID exists?:", exists)
 
 		// fetch details of current user from database
 		// if not matching record was found, remove their session info
 		// and call the next handler in the chain as normal
 		player, err := app.players.Get(app.session.GetInt(r, "authenticatedUserID"))
-		if ! (player.ID > 0) {		// or no rows in the result set
-			app.session.Remove(r, "authenticatedUserID")
+		fmt.Println("Player ID:", player.ID)
+
+		if player.ID == 0 {					// or no rows in the result set
+			fmt.Println("Session has not been established:", err.Error())
+			if app.session != nil {
+				app.session.Remove(r, "authenticatedUserID")
+			}
 			// if user is invalid, pass the original, unchanged 
 			// *http.Request to the next handler in the chain
 			next.ServeHTTP(w, r)
@@ -83,7 +91,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			app.serverError(w, err)
 			return
 		}
-
+		fmt.Println("Everything seems normal up to this point...")
 		// if the user appears to be active and legit:
 		// - create a new copy of the request with a true boolean value added 
 		//   to the request context to indicate our satisfaction with their status
