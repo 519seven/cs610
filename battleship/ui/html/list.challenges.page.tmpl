@@ -22,7 +22,17 @@
 				<td><input type=radio name=battleID value="{{.ID}}"></td>
 				<td>{{.Player1ScreenName}}</td>
 				<td>{{.Player2ScreenName}}</td>
-				<td>{{if not .Player2Accepted}}<input type=button value="Accept">{{else}}Accepted{{end}}</td>
+				<td>
+					{{if eq false .Player2Accepted}}
+						{{if eq .Player2ID .AuthenticatedUserID}}
+							<input type=button value="Accept">
+						{{else}}
+							Not yet :(
+						{{end}}
+					{{else}}
+						Accepted
+					{{end}}
+				</td>
 				<td><a href="/board/{{.ID}}">{{.BoardTitle}}</a></td>
 				<td>{{if not .Turn}}Yes{{else}}No{{end}}</td>
 				<td>In progress|Win|Loss</td>

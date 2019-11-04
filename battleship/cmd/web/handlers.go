@@ -218,7 +218,9 @@ func (app *application) listBattles(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
+	for _, battle := range b {
+		battle.AuthenticatedUserID = userID
+	}
 	app.renderBattles(w, r, "list.challenges.page.tmpl", &templateDataBattles{
 		Battles: 			b,
 	})

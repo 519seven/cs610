@@ -14,6 +14,7 @@ var (
 
 type Battle struct {
 	ID        			int
+	AuthenticatedUserID	int
 	BoardTitle			string
 	Player1ID 			int
 	Player1ScreenName	string

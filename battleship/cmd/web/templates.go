@@ -26,6 +26,7 @@ type templateDataBattle struct {
 // Battles
 type templateDataBattles struct {
 	ActiveBoardID			int
+	AuthenticatedUserID		int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
@@ -52,6 +53,7 @@ type templateDataBoard struct {
 // Board List
 type templateDataBoards struct {
 	ActiveBoardID			int
+	AuthenticatedUserID		int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
