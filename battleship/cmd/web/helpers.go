@@ -349,6 +349,7 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 		fmt.Println("boardID is empty:", boardID)
 		td.ActiveBoardID = 0
 	}
+	td.AuthenticatedUserID = app.session.GetInt(r, "authenticatedUserID")
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")

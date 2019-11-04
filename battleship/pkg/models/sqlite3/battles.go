@@ -105,15 +105,26 @@ func (m *BattleModel) GetChallenger(currentUserID int) (int, error) {
 // GetAll - Get all active battles or challenges (this could be combined with GetOpen below)
 func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 	stmt := `SELECT
-				b1.rowid, b2.boardName as BoardTitle, 
-				p1.rowid as Player1ID, p1.screenName as Player1ScreenName, 
-				p2.rowid as Player2ID, p2.screenName as Player2ScreenName 
-				FROM Battles as b1
-				JOIN Players as p1 ON p1.rowid = b1.player1ID
-				JOIN Players as P2 ON p2.rowid = b1.player2ID
-				JOIN Boards as b2 ON b2.rowid = b1.player1BoardID
-				JOIN Boards as b3 ON b3.rowid = b1.player2BoardID
-				WHERE b1.player2ID = ? OR b1.player1ID = ?`
+				b.rowid, b1.boardName,
+				player1ID, p1.screenName, player1Accepted, 
+				player2ID, p2.screenName, player2Accepted,
+				challengeDate as dateAsked, turn
+			FROM Battles b
+				LEFT OUTER JOIN Boards b1 ON b1.userID = b.player1ID
+				LEFT OUTER JOIN Players p1 ON p1.rowid = b.player1ID
+				LEFT OUTER JOIN Players p2 ON p2.rowid = b.player2ID
+			WHERE b.player1ID = ?
+			UNION
+			SELECT 
+				b.rowid, b2.boardName,
+				player1ID, p3.screenName, player1Accepted, 
+				player2ID, p4.screenName, player2Accepted,
+				challengeDate as dateAsked, turn
+			FROM Battles b
+				LEFT OUTER JOIN Boards b2 ON b2.userID = b.player2ID
+				LEFT OUTER JOIN Players p3 ON p3.rowid = b.player2ID
+				LEFT OUTER JOIN Players p4 ON p4.rowid = b.player2ID
+			WHERE player2ID = ?;`
 	rows, err := m.DB.Query(stmt, rowid, rowid)
 	if err != nil {
 		fmt.Println("[ERROR] stmt", stmt, err.Error())
@@ -125,7 +136,11 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 
 	for rows.Next() {
 		b := &models.Battle{}
-		err = rows.Scan(&b.ID, &b.BoardTitle, &b.Player1ID, &b.Player1ScreenName, &b.Player2ID, &b.Player2ScreenName)
+		err = rows.Scan(
+			&b.ID, &b.BoardTitle, 
+			&b.Player1ID, &b.Player1ScreenName, &b.Player1Accepted, 
+			&b.Player2ID, &b.Player2ScreenName, &b.Player2Accepted,
+			&b.ChallengeDate, &b.Turn)
 		if err != nil {
 			fmt.Println("[ERROR] Error:", err.Error())
 			return nil, err

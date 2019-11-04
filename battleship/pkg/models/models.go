@@ -17,9 +17,12 @@ type Battle struct {
 	BoardTitle			string
 	Player1ID 			int
 	Player1ScreenName	string
+	Player1Accepted		bool
 	Player2ID 			int
 	Player2ScreenName	string
-	Turn      			int
+	Player2Accepted		bool
+	ChallengeDate		time.Time
+	Turn      			sql.NullInt64
 }
 
 type Board struct {

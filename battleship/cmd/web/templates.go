@@ -38,6 +38,7 @@ type templateDataBattles struct {
 // Board
 type templateDataBoard struct {
 	ActiveBoardID			int
+	AuthenticatedUserID		int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string

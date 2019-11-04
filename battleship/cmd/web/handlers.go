@@ -405,7 +405,7 @@ func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	// the userID should be in a session somewhere
 	userID := app.session.GetInt(r, "authenticatedUserID")
 	boardID := app.session.GetInt(r, "boardID")
-	fmt.Println("boardID immediately after setting it is:", boardID)
+	fmt.Println("boardID immediately after setting is:", boardID)
 	s, err := app.boards.List(userID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
