@@ -126,8 +126,8 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 				LEFT OUTER JOIN Players p4 ON p4.rowid = b.player2ID
 			WHERE player2ID = ?;`
 	rows, err := m.DB.Query(stmt, rowid, rowid)
-	fmt.Println("The big sql stmt:", stmt, err.Error())
 	if err != nil {
+		fmt.Println("The big sql stmt:", stmt, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
