@@ -126,8 +126,8 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 				LEFT OUTER JOIN Players p4 ON p4.rowid = b.player2ID
 			WHERE player2ID = ?;`
 	rows, err := m.DB.Query(stmt, rowid, rowid)
+	fmt.Println("The big sql stmt:", stmt, err.Error())
 	if err != nil {
-		fmt.Println("[ERROR] stmt", stmt, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -142,13 +142,11 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 			&b.Player2ID, &b.Player2ScreenName, &b.Player2Accepted,
 			&b.ChallengeDate, &b.Turn)
 		if err != nil {
-			fmt.Println("[ERROR] Error:", err.Error())
 			return nil, err
 		}
 		battles = append(battles, b)
 	}
 	if err = rows.Err(); err != nil {
-		//fmt.Println("[ERROR] Error:", err.Error())
 		return nil, err
 	}
 
@@ -167,7 +165,7 @@ func (m *BattleModel) GetOpen(rowid, battleID int) ([]*models.Battle, error) {
 				WHERE b.player2ID = ?`
 	rows, err := m.DB.Query(stmt, rowid)
 	if err != nil {
-		fmt.Println("[ERROR] stmt", stmt, err.Error())
+		fmt.Println("This is the sql statement:", stmt)
 		return nil, err
 	}
 	defer rows.Close()
@@ -178,13 +176,11 @@ func (m *BattleModel) GetOpen(rowid, battleID int) ([]*models.Battle, error) {
 		b := &models.Battle{}
 		err = rows.Scan(&b.ID, &b.Player1ID, &b.Player1ScreenName, &b.Player2ID, &b.Player2ScreenName)
 		if err != nil {
-			fmt.Println("[ERROR] Error:", err.Error())
 			return nil, err
 		}
 		battles = append(battles, b)
 	}
 	if err = rows.Err(); err != nil {
-		//fmt.Println("[ERROR] Error:", err.Error())
 		return nil, err
 	}
 

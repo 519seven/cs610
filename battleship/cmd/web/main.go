@@ -16,6 +16,7 @@ import (
 // Custom application struct
 // - Makes objects available to our handlers
 type application struct {
+	debug			bool
 	errorLog      	*log.Logger
 	infoLog       	*log.Logger
 
@@ -57,12 +58,13 @@ func main() {
 	port := flag.String("port", ":5033", "HTTPS port on which to listen")
 	dsn := flag.String("dsn", "./battleship.db", "SQLite data source name")
 	initdb := flag.Bool("initialize", false, "Start with a fresh database")
+	debug := flag.Bool("debug", false, "Output debugging information to browser")
 	// 32 bytes long
 	secret := flag.String("secret", "nquR81XagSrAEHYXJSFw8y2PLbyWlF1Z", "Secret key")
 	flag.Parse()
 
-	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
-	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+	infoLog := log.New(os.Stdout,  "INFO   ", log.Ldate|log.Ltime)
+	errorLog := log.New(os.Stderr, "ERROR  ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	db, err := initializeDB(*dsn, *initdb)
 	if err != nil {
@@ -85,6 +87,7 @@ func main() {
 	// New instance of application containing dependencies
 	// - Some are sql.<models> instances
 	app := &application{
+		debug:			*debug,
 		errorLog:      	errorLog,
 		infoLog:       	infoLog,
 
@@ -116,7 +119,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:     		*port,
-		ErrorLog: 		errorLog,
+		ErrorLog: 		errorLog,			// make custom errorLog available to server
 		Handler:  		app.routes(),
 		TLSConfig: 		tlsConfig,			// tslConfig defined above
 		IdleTimeout:	time.Minute,		// Keep-alives on accepted connections prevent
@@ -129,7 +132,11 @@ func main() {
 											//  It is not meant to prevent long-running handlers
 	}
 
-	infoLog.Printf("Starting HTTPS server on %s", *port)
+	if app.debug {
+		infoLog.Printf("** You have turned Debugging ON for this session **")
+		infoLog.Printf("** You will want to leave it OFF in production   **")
+	}
+	infoLog.Printf("** Starting HTTPS server on %s                **", *port)
 	// Start the HTTPS server, pass in the paths to the TLS cert
 	//  and corresponding private key
 	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")

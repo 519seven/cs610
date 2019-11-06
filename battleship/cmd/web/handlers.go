@@ -206,6 +206,9 @@ func (app *application) about(w http.ResponseWriter, r *http.Request) {
 // -----------------------------------------------------------------------------
 // BEGIN BATTLES
 
+func (app *application) getBattle(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Still to be done - The battlefield, which will have two boards and an active battle..."))
+}
 // List battles
 func (app *application) listBattles(w http.ResponseWriter, r *http.Request) {
 	userID := app.session.GetInt(r, "authenticatedUserID")
@@ -224,6 +227,9 @@ func (app *application) listBattles(w http.ResponseWriter, r *http.Request) {
 	app.renderBattles(w, r, "list.challenges.page.tmpl", &templateDataBattles{
 		Battles: 			b,
 	})
+}
+func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Still to be done - A 'read-only' battlefield; from there you can click to access the active battlefield (/battle/get)..."))
 }
 
 // END BATTLES
@@ -386,7 +392,7 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 		return
 	}
-	fmt.Println("boardID: ", boardID)
+	app.infoLog.Println("boardID: ", boardID)
 	s, err := app.boards.Get(boardID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
@@ -407,7 +413,7 @@ func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	// the userID should be in a session somewhere
 	userID := app.session.GetInt(r, "authenticatedUserID")
 	boardID := app.session.GetInt(r, "boardID")
-	fmt.Println("boardID immediately after setting is:", boardID)
+	app.infoLog.Println("boardID immediately after setting is:", boardID)
 	s, err := app.boards.List(userID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
@@ -435,7 +441,7 @@ func (app *application) selectBoard(w http.ResponseWriter, r*http.Request) {
 
 	app.session.Remove(r, "boardID")
 	app.session.Put(r, "boardID", boardID)
-	fmt.Println(app.session.GetInt(r, "boardID"))
+	app.infoLog.Println(app.session.GetInt(r, "boardID"))
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
 
@@ -474,7 +480,7 @@ func (app *application) challengePlayer(w http.ResponseWriter, r *http.Request) 
 	// Player1 information is retrieved from session object
 	player1ID := app.session.GetInt(r, "authenticatedUserID")
 	player1BoardID := app.session.GetInt(r, "boardID")
-	fmt.Println("Player1 boardID is", player1BoardID)
+	app.infoLog.Println("Player1 boardID is", player1BoardID)
 	if player1BoardID < 1 {
 		app.session.Put(r, "flash", "You must select your board first, then issue a challenge!")
 		http.Redirect(w, r, "/board/list", http.StatusSeeOther)
@@ -485,12 +491,12 @@ func (app *application) challengePlayer(w http.ResponseWriter, r *http.Request) 
 	userID := form.Get("userID")
 	if userID == "" {
 		//app.serverError(w, )
-		fmt.Println("player2ID is empty")
+		app.infoLog.Println("player2ID is empty")
 		return
 	} else {
 		player2ID, err = strconv.Atoi(userID)
 		if err != nil {
-			fmt.Println("player2ID is empty")
+			app.infoLog.Println("player2ID is empty")
 			return
 		}
 	}

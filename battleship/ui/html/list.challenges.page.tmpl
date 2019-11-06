@@ -4,7 +4,7 @@
 
 {{define "main"}}
 	{{if .Battles}}
-		<form name=selectBoard action='/battle/select' method=POST>
+		<form name=selectBoard action='/battle/view/' method=POST>
 		<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
 		{{with .Battles}}
 		<table>
@@ -43,8 +43,8 @@
 		{{end}}
 	{{else}}
 		<p>You need to create a board, then select the board and challenge a player.</p>
+		<a href="/board/create">Create a new board</a>
 	{{end}}
-	<a href="/board/create">Create a new board</a>
 	<script type='text/javascript'>
 	$(document).ready(function() { 
 		$('input[name=battleID]').change(function(){
