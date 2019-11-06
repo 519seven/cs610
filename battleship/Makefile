@@ -27,14 +27,33 @@ test:
 		env
 
 build: 
-		set -e; ./build_project.sh
+		@set -e; ./build_project.sh	&& { 										\
+			echo "---------------- Project build succeeded! -----------------";	\
+			echo "---------- Run ./battleship (-h for more info)) -----------";	\
+			echo "------------------ Your battle awaits you! ----------------"; \
+			exit 0; 															\
+		 } || {																	\
+			echo "Project build failed. Check output.";							\
+			exit 1;																\
+		 }
 		
 certs:
-		set -e; ./gen_cert.sh
+		@set -e; ./gen_cert.sh && {												\
+			echo "Certs have been generated!";									\
+		 } || {																	\
+		 	echo "Cert we not generated. Check output."; 						\
+			exit 1;																\
+		 }
 
 clean: 
-		rm -f $(BINARY_NAME)
-		rm -f $(ENV_FILE)
+		@rm -f $(BINARY_NAME)
+		@rm -f $(ENV_FILE)
+		@echo "Removing $(BINARY_NAME) and $(ENV_FILE)...Done!"
 
 setup:
-		set -e; ./setup_env.sh
+		@./setup_env.sh && {													\
+			echo "Set up complete!";											\
+		 } || { 																\
+		 	echo "Setup exiting!";												\
+			exit 1;																\
+		 }

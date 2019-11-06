@@ -1,26 +1,52 @@
 #!/bin/bash
 
+set -e
+
 CURDIR=$(pwd)
 INSTALLGO="N"
 USER_GOROOT=/usr/local
 
+function get_answer {
+  read -p "Would you like to set it up for your user (no sudo required) [y/n]? " yesno
+  case "$yesno" in
+    y|Y)
+      printf "$GOBASE will be installed\n"
+      INSTALLGO=true
+      return 0
+      ;;
+    n|N)
+      printf "Not installing $GOBASE\n"
+      INSTALLGO=false
+      exit 1
+      ;;
+    *)
+      printf %s\\n "Enter y or n only"
+      return 1
+      ;;
+  esac
+}
+
 function go_get_var {
   # Try to find and set our go vars
   printf "Checking for go1.13 (this may take several seconds)\n"
-  GO113=$(find ~ -type f -name 'go1.13' -o -name 'go1.13.1' | grep bin | head -1)
-  GOVER=$($GO113 version | awk '{print $3}')
-  GO=$(( which go ) 2>&1)
+  GO=$(find ~ -type f -name 'go1.13' -o -name 'go1.13.1' | grep bin | head -1)
+  GOBASE=$(basename $GO)
+  if ! $GO version 2>/dev/null; then
+    # go was found but it isn't installed
+    GO=""
+  fi
 }
 
 function go_found {
   # Look for an existing go version
-  if [[ $GOVER == "go1.13" || $GOVER == "go1.13.1" ]]; then
-    echo "export GO=$GO113" > .install_env
-    printf "Go version 1.13 was found.  You're good to go :)\n"
+  if [[ $GO == *"go1.13"* || $GO == *"go1.13.1"* ]]; then
+    save_env
+    printf "go version $GOBASE was found.  You're good to go :)\n"
     printf "Passing control back to setup...\n"
     exit 0
   fi
-  printf "Go 1.13 was not found.  Attempting to set it up...\n"
+  printf "Go $GOBASE was not found.\n"
+  until get_answer; do : ; done
 }
 
 function go_save_vars {
@@ -40,15 +66,18 @@ function go_get_go {
     exit 1
   else
     printf "Getting go1.13\n"
-    rc="$($GOVER download 2>&1 >/dev/null)"
+    rc="$($GOBASE download 2>&1 >/dev/null)"
     if [[ $rc == *"already downloaded"* ]]; then
-      printf "Go1.13 is already downloaded. You're good to go :)"
+      printf "$GOBASE is already downloaded. You're good to go :)"
     fi
-    echo "export GO=$GO113" > .install_env
+    save_env
     exit 0
   fi
 }
 
+function save_env {
+  echo -e "export GO=$GO\nexport GOBASE=$GOBASE" > .install_env
+}
 # -----------------------------------------------------------------------------
 
 go_get_var || { printf "Error in go_get_var. Exiting...\n"; exit 1; }
