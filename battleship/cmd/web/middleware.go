@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
+	//"errors"
 	"fmt"
 	"net/http"
+
+	//"github.com/519seven/cs610/battleship/pkg/models"
+	"github.com/justinas/nosurf"	// csrf protection
+
 )
 
 // simple function to  add headers to help prevent XSS and Clickjacking attacks
@@ -22,6 +28,19 @@ func (app *application) logRequest(next http.Handler) http.Handler {
 	})
 }
 
+// noSurf - prevent CSRF by adding a token to a hidden field in each form
+//          and check that the token and cookie info match
+func noSurf(next http.Handler) http.Handler {
+	csrfHandler := nosurf.New(next)
+	csrfHandler.SetBaseCookie(http.Cookie{
+		HttpOnly: 	true,
+		Path: 		"/",
+		Secure:		true,
+	})
+	return csrfHandler
+}
+
+// recoverPanic - unwind the stack when an error occurs
 func (app *application) recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// recover when the stack unwinds
@@ -41,12 +60,59 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// check if authenticatedUserID is present; if not, call the next handler
+		fmt.Println("checking for authenticatedUserID")
+		exists := app.session.Exists(r, "authenticatedUserID")
+		if !exists {
+			fmt.Println("authenticatedUserID does not exist")
+			next.ServeHTTP(w, r)
+			return
+		}
+		fmt.Println("authenticatedUserID exists?:", exists)
+
+		// fetch details of current user from database
+		// if no matching record was found, remove their session info
+		// and call the next handler in the chain as normal
+		player, err := app.players.Get(app.session.GetInt(r, "authenticatedUserID"))
+		if err != nil {
+			if app.session != nil {
+				app.session.Remove(r, "authenticatedUserID")
+			}
+		}
+		fmt.Println("Player ID:", player.ID)
+
+		if player.ID == 0 {					// or no rows in the result set
+			fmt.Println("Session has not been established:", err.Error())
+			if app.session != nil {
+				app.session.Remove(r, "authenticatedUserID")
+			}
+			// if user is invalid, pass the original, unchanged 
+			// *http.Request to the next handler in the chain
+			next.ServeHTTP(w, r)
+			return
+		} else if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		fmt.Println("Everything seems normal up to this point...")
+		// if the user appears to be active and legit:
+		// - create a new copy of the request with a true boolean value added 
+		//   to the request context to indicate our satisfaction with their status
+		// - call the next handler in the chain using the new copy of the request
+		ctx := context.WithValue(r.Context(), contextKeyIsAuthenticated, true)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func (app *application) requireAuthentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !app.isAuthenticated(r) {
 			http.Redirect(w, r, "/login", 302)
 			return
 		}
+		// For pages that require authentication, add header
 		w.Header().Add("Cache-Control", "no-store")
 		next.ServeHTTP(w, r)
 	})

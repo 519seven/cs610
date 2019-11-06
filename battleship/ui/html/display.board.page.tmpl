@@ -1,0 +1,16 @@
+{{template "base" .}}
+
+{{define "title"}}View Board{{end}}
+{{define "main"}}
+    <div>
+        <label>Board Title: &lt;need to get boardname passed thru&gt;</label>
+        <table border=1>
+            <tr>
+                <td>
+                    {{.MainGrid}}
+                </td>
+            </tr>
+        </table>
+    </div>
+</form>
+{{end}}

@@ -9,70 +9,113 @@ import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 )
 
-// Allow more data to be passed to the template
+// These structs are used to pass more data to the template
+
+// Battle
 type templateDataBattle struct {
+	ActiveBoardID			int
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Battle      			*models.Battle
 	Battles     			[]*models.Battle
 }
-// single board
-type templateDataBoard struct {
+// Battles
+type templateDataBattles struct {
+	ActiveBoardID			int
+	AuthenticatedUserID		int
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
+	Battle      			*models.Battle
+	Battles     			[]*models.Battle
+}
+// Board
+type templateDataBoard struct {
+	ActiveBoardID			int
+	AuthenticatedUserID		int
+	CSRFToken				string
+	CurrentYear 			int
+	Flash					string
+	Form					*forms.Form
+	IsAuthenticated			bool
+	ScreenName				string
 	PositionsOnBoard       	*models.PositionsOnBoard
 	PositionsOnBoards      	[]*models.PositionsOnBoard
+	MainGrid				template.HTML
 }
-// list of boards
+// Board List
 type templateDataBoards struct {
+	ActiveBoardID			int
+	AuthenticatedUserID		int
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Board					*models.Board
 	Boards					[]*models.Board
 }
+// Login
 type templateDataLogin struct {
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Login      				*models.Login
 }
+// Player
 type templateDataPlayer struct {
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
+// Player List
 type templateDataPlayers struct {
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
-type templateDataSignup struct {
-	CurrentYear 			int
-	Flash					string
-	Form					*forms.Form
-	IsAuthenticated			bool
-	Signup      			*models.Signup
-}
+// Position
 type templateDataPosition struct {
+	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
 	Form					*forms.Form
 	IsAuthenticated			bool
+	ScreenName				string
 	Position    			*models.Position
 	Positions   			[]*models.Position
+	MainGrid				template.HTML
+}
+// Sign-Up
+type templateDataSignup struct {
+	CSRFToken				string
+	CurrentYear 			int
+	Flash					string
+	Form					*forms.Form
+	IsAuthenticated			bool
+	ScreenName				string
+	Signup      			*models.Signup
 }
 
 // Give us human-friendly dates
@@ -101,9 +144,9 @@ func iterateColumns(count uint) []string {
 	return items
 }
 
-// initialize template.FuncMap and store it in a global variable
-// the FuncMap is essentially a string-keyed map which acts as a 
-// go-between for custom template functions and the functions themselves
+// Initialize template.FuncMap and store it in a GLOBAL variable
+// - FuncMap is essentially a string-keyed map
+//   - acts as a go-between for custom template functions and the functions themselves
 var functions = template.FuncMap{
 	"humanDate": humanDate,
 	"iterateColumns": iterateColumns,

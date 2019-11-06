@@ -4,10 +4,12 @@
 
 {{define "main"}}
 	{{if .Players}}
+		<form name=selectBoard action='/player/challenge' method=POST>
+		<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
 		{{with .Players}}
 		<table>
 			<tr>
-				<th>ID</th>
+				<th>Challenge?</th>
 				<th>Screen Name</th>
 				<th>E-mail Address</th>
 				<th>Logged In?</th>
@@ -15,7 +17,7 @@
 			</tr>
 			{{range .}}
 			<tr>
-				<td>{{.ID}}</td>
+				<td><input type=radio name=userID value={{.ID}}></td>
 				<td>{{.ScreenName}}</td>
 				<td>{{.EmailAddress}}</td>
 				<td>{{.LoggedIn}}</td>
@@ -25,6 +27,41 @@
 		</table>
 		{{end}}
 	{{else}}
-		<p>Nothing to see just yet</p>
+		<p>There are no other players logged in at this moment.</p>
 	{{end}}
+	<script type='text/javascript'>
+	$(document).ready(function() { 
+		$('input[name=userID]').change(function(){
+			$('form').submit();
+		});
+	});
+	(function poll() {
+		var continuePolling = true;
+		var pageData;
+		setTimeout(function() {
+			$.ajax({
+				url: "/status/battles",
+				type: "GET",
+				success: function(data) {
+					//jsonData = JSON.parse(data);					// don't need to parse, it's already json
+					console.log("a challenger awaits you");
+					continuePolling = false;
+					if (confirm('Would you like to view your new challenge?')) {
+						alert('Taking you to '+data.redirect);
+						$(location).attr('href', data.redirect);	// if attr doesn't work, use val
+					}else{
+						alert('Turning off polling for this visit.\nVisit '+data.redirect+' to view your challenge(s).');
+						alert('Next, made a menu item appear for users to click to see their challenges');
+					};
+				},
+				error: function(request,error) {
+					console.log("error")
+				},
+				dataType: "json",
+				complete: function() { if (continuePolling) { poll(); }},
+				timeout: 2000
+			})
+		}, 5000);
+	})();
+	</script>
 {{end}}

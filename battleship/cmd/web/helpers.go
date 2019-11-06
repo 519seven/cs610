@@ -4,16 +4,20 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"runtime/debug"
 	"time"
 	"strings"
+	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/justinas/nosurf"							 // csrf prevention
+	"github.com/519seven/cs610/battleship/pkg/models"
 )
 
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 // database
 
 func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
@@ -37,12 +41,16 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		return nil, err
 	}
 	// create the tables if they don't exist
+	// in sqlite3, a unique, auto-incrementing rowid is automatically created
 	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS Battles 
-		(player1ID INTEGER, player2ID INTEGER, turn INTEGER)`)
+		(player1ID INTEGER, player1Accepted BOOLEAN, player1BoardID INTEGER,
+		 player2ID INTEGER, player2Accepted BOOLEAN, player2BoardID INTEGER,
+		 challengeDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+		 turn INTEGER)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
 		(boardName TEXT, userID INTEGER, gameID INTEGER, 
-		 created DATETIME DEFAULT CURRENT_TIMESTAMP)`)
+		 created DATETIME DEFAULT CURRENT_TIMESTAMP, isChosen BOOLEAN)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Players 
 		(screenName TEXT, emailAddress TEXT NOT NULL UNIQUE, 
@@ -101,93 +109,175 @@ func checkMethod(m string, w http.ResponseWriter, r *http.Request) (http.Respons
 // -----------------------------------------------------------------------------
 // General
 
-// clean form data
+// Clean form data
 func cleanCoordinates(coordinates string) string {
 	cleanString := strings.Replace(coordinates, "\t", "", -1)
 	cleanString = strings.Replace(cleanString, "\n", "", -1)
 	return strings.Replace(cleanString, " ", "", -1)
 }
 
-// check relationship between current user and a resource
+// Check relationship between current user and a resource
 func (app *application) checkRelationship(resourceID int) bool {
 	return true
 }
 
 // For Authorization
 func (app *application) isAuthenticated(r *http.Request) bool {
-	return app.session.Exists(r, "authenticatedUserID")
-}
-
-// add default data to create board interface
-func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Request) *templateDataBoard {
-	if td == nil {
-		td = &templateDataBoard{}
+	fmt.Println("Inspecting context for authentication...")
+	isAuthenticated, ok := r.Context().Value(contextKeyIsAuthenticated).(bool)
+	if !ok {
+		fmt.Println("isAuthenticated returned false!")
+		return false
 	}
-	td.CurrentYear = time.Now().Year()
-	td.Flash = app.session.PopString(r, "flash")
-	td.IsAuthenticated = app.isAuthenticated(r)
-	return td
+	return isAuthenticated
 }
 
-// add default data to list of boards screens
-func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Request) *templateDataBoards {
-	if td == nil {
-		td = &templateDataBoards{}
+// Pre-processing HTML/template data
+// - Draw the board and pass in the HTML
+func (app *application) preprocessBoardFromData(p *models.PositionsOnBoard) template.HTML {
+	gameBoard := "<table><th>&nbsp;</th>"
+	fmt.Println("My struct:", p)
+	fmt.Println("----end")
+	for _, col := range "ABCDEFGHIJ" {
+		gameBoard += fmt.Sprintf("<th>%s</th>", string(col))
 	}
-	td.CurrentYear = time.Now().Year()
-	td.Flash = app.session.PopString(r, "flash")
-	td.IsAuthenticated = app.isAuthenticated(r)
-	return td
+	for row := 1; row < 11; row++ {
+		gameBoard += fmt.Sprintf("<tr><td>%d</td>", row)
+		rowStr := strconv.Itoa(row)
+		for _, col := range "ABCDEFGHIJ" {
+
+			gameBoard += fmt.Sprintf(
+				"<td><input type='text'	maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", 
+				row, string(col), "shipXY"+rowStr+string(col))
+		}
+		gameBoard += "</tr>"
+	}
+	gameBoard += "</table>"
+	return template.HTML(gameBoard)
+}
+func (app *application) preprocessBoardFromRequest(r *http.Request) template.HTML {
+	gameBoard := "<table><th>&nbsp;</th>"
+	for _, col := range "ABCDEFGHIJ" {
+		gameBoard += fmt.Sprintf("<th>%s</th>", string(col))
+	}
+	for row := 1; row < 11; row++ {
+		gameBoard += fmt.Sprintf("<tr><td>%d</td>", row)
+		rowStr := strconv.Itoa(row)
+		for _, col := range "ABCDEFGHIJ" {
+			gameBoard += fmt.Sprintf(
+				"<td><input type='text'	maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", 
+				row, string(col), r.PostForm.Get("shipXY"+rowStr+string(col)))
+		}
+		gameBoard += "</tr>"
+	}
+	gameBoard += "</table>"
+	return template.HTML(gameBoard)
 }
 
-// add default data to login screens
+// ----------------------------------------------------------------------------
+// Create template data helpers so we can add items.  This information is 
+// automatically available each time we render a template
+// ----------------------------------------------------------------------------
+
+// Add default data to login screens
 func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Request) *templateDataLogin {
 	if td == nil {
 		td = &templateDataLogin{}
 	}
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
 
-// add default data to player info screens
+// Add default data to player info screens
 func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Request) *templateDataPlayer {
 	if td == nil {
 		td = &templateDataPlayer{}
 	}
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
 
-// add default data to player info screens
+// Add default data to player info screens
 func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.Request) *templateDataPlayers {
 	if td == nil {
 		td = &templateDataPlayers{}
 	}
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
 
-// add default data to signup screens
+// Add default data to signup screens
 func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Request) *templateDataSignup {
 	if td == nil {
 		td = &templateDataSignup{}
 	}
+	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
-	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
 	return td
 }
 
-// Cache
 // ----------------------------------------------------------------------------
-// Board
-func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoard) {
+// ----------------------------------------------------------------------------
+
+// Add default data to create battle interface
+func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Request) *templateDataBattle {
+	if td == nil {
+		td = &templateDataBattle{}
+	}
+	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
+	return td
+}
+// renderBattle
+func (app *application) renderBattle(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattle) {
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// Write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// Execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataBattle(td, r))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)
+}
+// Add default data to create list of battles
+func (app *application) addDefaultDataBattles(td *templateDataBattles, r *http.Request) *templateDataBattles {
+	if td == nil {
+		td = &templateDataBattles{}
+	}
+	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
+	return td
+}
+// renderBattles
+func (app *application) renderBattles(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattles) {
 	ts, ok := app.templateCache[name]
 	if !ok {
 		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
@@ -197,6 +287,49 @@ func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name
 	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataBattles(td, r))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)
+}
+// ----------------------------------------------------------------------------
+
+// Add default data to create board interface
+func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Request) *templateDataBoard {
+	if td == nil {
+		td = &templateDataBoard{}
+	}
+	if td.PositionsOnBoard != nil {
+		fmt.Println("PositionsOnBoard is not nil.  We should build MainGrid here...")
+		td.MainGrid = app.preprocessBoardFromData(td.PositionsOnBoard)
+	} else {
+		td.MainGrid = app.preprocessBoardFromRequest(r)
+	}
+	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
+	// Positions
+	//td.PositionsOnBoard = app.positionsOnBoard(r)
+	//td.PositionsOnBoards = app.positionsOnBoard(r)
+	// Add a new string containing processed template snippet
+	return td
+}
+// Board
+func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoard) {
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// Write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// Execute template set, passing the dynamic data with the copyright year
 	err := ts.Execute(buf, app.addDefaultDataBoard(td, r))
 	if err != nil {
 		app.serverError(w, err)
@@ -204,8 +337,27 @@ func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name
 	}
 	buf.WriteTo(w)
 }
-
-// cache templates for Boards
+// Add default data to list of boards screens
+func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Request) *templateDataBoards {
+	if td == nil {
+		td = &templateDataBoards{}
+	}
+	boardID := app.session.GetInt(r, "boardID")
+	if boardID > 0 {
+		td.ActiveBoardID = boardID
+	} else {
+		fmt.Println("boardID is empty:", boardID)
+		td.ActiveBoardID = 0
+	}
+	td.AuthenticatedUserID = app.session.GetInt(r, "authenticatedUserID")
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
+	return td
+}
+// renderBoards
 func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoards) {
 	ts, ok := app.templateCache[name]
 	if !ok {
@@ -223,8 +375,35 @@ func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, nam
 	}
 	buf.WriteTo(w)
 }
+// ----------------------------------------------------------------------------
 
-// cache templates for Login
+// Confirm Status
+func (app *application) renderConfirmStatus(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattle) {
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataBattle(td, r))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)
+}
+
+// Return JSON
+func (app *application) renderJson(w http.ResponseWriter, r *http.Request, out []byte) {
+	// Convert challengerID to string so we can add more strings later
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(out)
+}
+
+// Login
 func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name string, td *templateDataLogin) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -237,14 +416,24 @@ func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
 	err := ts.Execute(buf, app.addDefaultDataLogin(td, r))
+	
+	// Remove session information
+	if app.session != nil {
+		app.session.Remove(r, "authenticatedUserID")
+		app.session.Remove(r, "boardID")
+		app.session.Remove(r, "battleID")
+		fmt.Println("Session information has been removed...")
+	}
+
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 	buf.WriteTo(w)
 }
+// ----------------------------------------------------------------------------
 
-// cache templates for Player
+// Player
 func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayer) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -264,7 +453,7 @@ func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, nam
 	buf.WriteTo(w)
 }
 
-// cache templates for Players
+// Players
 func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayers) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -283,8 +472,9 @@ func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, na
 	}
 	buf.WriteTo(w)
 }
+// ----------------------------------------------------------------------------
 
-// cache templates for Signup
+// Signup
 func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, name string, td *templateDataSignup) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -292,10 +482,10 @@ func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, nam
 		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
 		return
 	}
-
 	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
+	fmt.Println("error")
 	err := ts.Execute(buf, app.addDefaultDataSignup(td, r))
 	if err != nil {
 		app.serverError(w, err)
@@ -303,25 +493,30 @@ func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, nam
 	}
 	buf.WriteTo(w)
 }
-
-/* -------------------------------------------------------------------------- */
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // Error handling
 
-// The serverError helper writes an error message and stack trace to the errorLog, // then sends a generic 500 Internal Server Error response to the user.
+// The serverError helper writes an error message and stack trace to the errorLog
+//  - Sends a generic 500 Internal Server Error response to the user
 func (app *application) serverError(w http.ResponseWriter, err error) {
 	trace := fmt.Sprintf("%s\n%s", err.Error(), debug.Stack())
 	app.errorLog.Output(2, trace)
+	if app.debug {
+		http.Error(w, trace, http.StatusInternalServerError)
+		return
+	}
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
-// The clientError helper sends a specific status code and corresponding description // to the user. We'll use this later in the book to send responses like 400 "Bad
-// Request" when there's a problem with the request that the user sent.
+// The clientError helper sends a specific status code and description to the user
+// - Like 400 "Bad Request" when there's a problem with the request that the user sent
 func (app *application) clientError(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
 }
 
-// For consistency, we'll also implement a notFound helper. This is simply a
-// convenience wrapper around clientError which sends a 404 Not Found response to // the user.
+// And, a notFound helper for consistency
+// - A convenience wrapper around clientError
 func (app *application) notFound(w http.ResponseWriter) {
 	app.clientError(w, http.StatusNotFound)
 }

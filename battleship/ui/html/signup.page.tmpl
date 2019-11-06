@@ -4,6 +4,7 @@
 
 {{define "main"}}
 <form action='/signup' method='POST'>
+	<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
 	{{with .Form}}
 	<div>
 		<label><br/>Screen Name</label>
@@ -22,8 +23,8 @@
 		{{end}}
 		<input type=password size=32 name=password maxlength=32 value=''>
 		<label><br/>Password Confirmation</label>
-		{{with .Errors.Get "passwordConf"}}
-			<label class='error'>{{.}}</label>
+		{{with .Errors.Get "password"}}
+			<label class='error'></label>
 		{{end}}
 		<input type=password size=32 name=passwordConf maxlength=32 value=''>
 		<input type=submit name="Add Player">

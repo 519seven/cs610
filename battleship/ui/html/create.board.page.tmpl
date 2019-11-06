@@ -3,31 +3,31 @@
 {{define "title"}}New Board{{end}}
 {{define "main"}}
 <form action='/board/create' method='POST'>
-    {{with .Form}}
+	<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
     <div>
         <label>Create Your Board</label>
     </div>
     <div>
         <label>Board name:</label>
-        {{with .Errors.Get "boardName"}}
+        {{with .Form.Errors.Get "boardName"}}
             <label class='error'>{{.}}</label><br/>
         {{end}}
-        <input type='text' name='boardName' maxlength=35 size=35 value='{{.Get "boardName"}}'>
+        <input type='text' name='boardName' maxlength=35 size=35 value='{{.Form.Get "boardName"}}'>
     </div>
     <div>
-        {{with .Errors.Get "carrier"}}
+        {{with .Form.Errors.Get "carrier"}}
             <span class='error'>{{.}}</span><br/>
         {{end}}
-        {{with .Errors.Get "battleship"}}
+        {{with .Form.Errors.Get "battleship"}}
             <span class='error'>{{.}}</span><br/>
         {{end}}
-        {{with .Errors.Get "cruiser"}}
+        {{with .Form.Errors.Get "cruiser"}}
             <span class='error'>{{.}}</span><br/>
         {{end}}
-        {{with .Errors.Get "submarine"}}
+        {{with .Form.Errors.Get "submarine"}}
             <span class='error'>{{.}}</span><br/>
         {{end}}
-        {{with .Errors.Get "destroyer"}}
+        {{with .Form.Errors.Get "destroyer"}}
             <span class='error'>{{.}}</span><br/>
         {{end}}
         <label>Place your ships</label>
@@ -69,20 +69,7 @@
             <tr>
                 <td>
                     Enter a letter representing your ship
-                    <table>
-                    <th>&nbsp;</th>
-                    {{- range $col := iterateColumns 10}}
-                    <th>{{$col}}</th>
-                    {{- end}}
-                    {{- range $row := iterateRows 10 1}}
-                        <tr>
-                            <td>{{$row}}</td>
-                        {{- range $col := iterateColumns 10}}
-                            <td><input type='text' maxlength=1 size=6 name="shipXY{{$row}}{{$col}}" value=""></td>
-                        {{- end}}
-                        </tr>
-                    {{- end}}
-                    </table>
+                    {{.MainGrid}}
                 </td>
             </tr>
         </table>
@@ -90,6 +77,5 @@
     <div>
         <input type='submit' value='Save board'>
     </div>
-    {{end}}
 </form>
 {{end}}

@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/bmizerany/pat"	// router
-	"github.com/justinas/alice"	// middleware
+	"github.com/bmizerany/pat"		// router
+	"github.com/justinas/alice"		// middleware
 )
 
 // Update routes to make it return http.Handler rather than *http.ServeMux
@@ -13,45 +13,59 @@ func (app *application) routes() http.Handler {
 	// every request will use this middleware chain
 	standardMiddleware := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 
-	// Create a new middleware chain to accommodate our session middleware
-	dynamicMiddleware := alice.New(app.session.Enable)
+	// Create a new middleware chain to accommodate:
+	// a.) session middleware
+	// b.) csrf protection (noSurf)
+	dynamicMiddleware := alice.New(app.session.Enable, noSurf, app.authenticate)
 
 	mux := pat.New()
-	mux.Get("/", dynamicMiddleware.ThenFunc(app.home))
 	// More specific routes at the top, less specific routes follow...
+
+	// Basics - home and about
+	mux.Get("/", dynamicMiddleware.ThenFunc(app.home))
+	//mux.Get("/about", dynamicMiddleware.ThenFunc(app.about))
+
 	// BATTLES
+	// see if there are any challenges out there
+	mux.Get("/status/battles/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBattles))
+	// "accept" a challenge from another player
+	mux.Post("/status/confirm/:battleID", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.confirmStatus))
+	// access a battlefield and continue battling - the battleID will be sent in form post
+	mux.Post("/battle/get", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.getBattle))
+	// view a non-playable version of a battle - the battleID will be sent in form post
+	mux.Post("/battle/view", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.viewBattle))
 	/*
-		mux.HandleFunc("/battle", app.displayBattle)
-		mux.HandleFunc("/battle/create", app.createBattle)
-		mux.HandleFunc("/battle/list", app.listBattle)
-		mux.HandleFunc("/battle/update", app.updateBattle)
+	mux.HandleFunc("/battle/create", app.createBattle)
+	mux.HandleFunc("/battle/list", app.listBattle)
+	mux.HandleFunc("/battle/update", app.updateBattle)
 	*/
-	// Update routes to use the new dynamic middleware chain for our session middleware
-	
 	// BOARDS
 	mux.Post("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoard))			// save board info
 	mux.Get("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoardForm))		// display board if GET
-	mux.Get("/board/list", dynamicMiddleware.ThenFunc(app.listBoards))
-	mux.Get("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
+	mux.Get("/board/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBoards))
+	mux.Post("/board/select", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.selectBoard))
+	mux.Post("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
 	mux.Get("/board/:id", dynamicMiddleware.ThenFunc(app.displayBoard))
 	// PLAYERS
-	mux.Get("/player/list", dynamicMiddleware.ThenFunc(app.listPlayers))
-	mux.Get("/player/update/:id", dynamicMiddleware.ThenFunc(app.updatePlayer))
-	mux.Get("/player/:id", dynamicMiddleware.ThenFunc(app.displayPlayer))
+	mux.Post("/player/challenge", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.challengePlayer))
+	mux.Get("/player/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listPlayers))
+	mux.Get("/player/update/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.updatePlayer))
+	mux.Get("/player/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.displayPlayer))
 	// POSITIONS
-	mux.Get("/position/update/:id", dynamicMiddleware.ThenFunc(app.updatePosition))
+	mux.Get("/position/update/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.updatePosition))
 	// SHIPS
 	/*
 		mux.HandleFunc("/ship", app.selectShip)
 		mux.HandleFunc("/ship/list", app.listShip)
 	*/
 	// AUTH
+	mux.Get("/freshstart", alice.New(app.session.Enable).ThenFunc(app.getSignupForm))
 	mux.Get("/signup", dynamicMiddleware.ThenFunc(app.getSignupForm))		// display form if GET
-	mux.Post("/signup", dynamicMiddleware.ThenFunc(app.postSignup))			// save player info
+	mux.Post("/signup", alice.New(app.session.Enable).ThenFunc(app.postSignup))			// save player info
 	mux.Get("/login", dynamicMiddleware.ThenFunc(app.loginForm))
 	mux.Post("/login", dynamicMiddleware.ThenFunc(app.postLogin))
-	mux.Get("/logout", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.postLogout))
-	mux.Post("/updatePlayer", dynamicMiddleware.ThenFunc(app.updatePlayer))
+	mux.Post("/logout", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.postLogout))
+	mux.Post("/updatePlayer", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.updatePlayer))
 
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	// remove a specific prefix from the request's URL path
