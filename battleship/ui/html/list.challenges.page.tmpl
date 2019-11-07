@@ -4,15 +4,13 @@
 
 {{define "main"}}
 	{{if .Battles}}
-		<form name=selectBoard action='/battle/view/' method=POST>
-		<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
 		{{with .Battles}}
 		<table>
 			<tr>
 				<th>View</th>
 				<th>Challenger</th>
 				<th>Opponent</th>
-				<th>Resonded?</th>
+				<th>Responded?</th>
 				<th>Board Name</th>
 				<th>Active</th>
 				<th>Result</th>
@@ -25,7 +23,11 @@
 				<td>
 					{{if eq false .Player2Accepted}}
 						{{if eq .Player2ID .AuthenticatedUserID}}
-							<input type=button value="Accept">
+							<form name=accept{{.ID}} action='/battle/accept' method=POST>
+								<input type='hidden' name='csrf_token' value='{{$.CSRFToken}}'>
+								<input type='button' name='player2Accepted' value='Accept' onclick="this.form.submit();">
+								<input type='hidden' name='battleID' value='{{.ID}}'>
+							</form>
 						{{else}}
 							Not yet :(
 						{{end}}
@@ -39,17 +41,9 @@
 			</tr>
 			{{end}}
 		</table>
-		</form>
 		{{end}}
 	{{else}}
 		<p>You need to create a board, then select the board and challenge a player.</p>
 		<a href="/board/create">Create a new board</a>
 	{{end}}
-	<script type='text/javascript'>
-	$(document).ready(function() { 
-		$('input[name=battleID]').change(function(){
-    	    $('form').submit();
-   		});
-  	});
-	</script>
 {{end}}

@@ -2,6 +2,7 @@ package sqlite3
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/519seven/cs610/battleship/pkg/models"
@@ -9,6 +10,28 @@ import (
 
 type BattleModel struct {
 	DB *sql.DB
+}
+
+// Accept a challenge (battle)
+func (m *BattleModel) Accept(player2ID, battleID int) (int, error) {
+	player2IDFromDB := 0
+	// Check to be sure that the person accepting this battle is matches the "player2ID"
+	stmt := `SELECT player2ID FROM Battles WHERE rowid = ? AND player2Accepted = false`
+	err := m.DB.QueryRow(stmt, battleID).Scan(&player2IDFromDB)
+	if err != nil {
+		return 0, err
+	}
+
+	if player2ID == player2IDFromDB {
+		// Only player2 can accept a challenge
+		stmt = `UPDATE Battles SET player2Accepted = true WHERE rowid = ?`
+		_, err := m.DB.Exec(stmt, battleID)
+		if err != nil {
+			return 0, err
+		}
+		return battleID, nil
+	}
+	return 0, errors.New("Player mistmatch")
 }
 
 // Create a new Battle - record the challenger (player1) and the challengee (player2)
@@ -35,7 +58,8 @@ func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int) (int, err
 		}
 	}
 	if battleID > 0 {
-		_, err := m.DB.Exec(`UPDATE Battles SET player1BoardID = ? WHERE player1ID = ? AND rowid = ?`, player1BoardID, player1ID, battleID)
+		stmt = `UPDATE Battles SET player1BoardID = ? WHERE player1ID = ? AND rowid = ?`
+		_, err := m.DB.Exec(stmt, player1BoardID, player1ID, battleID)
 		if err != nil {
 			return 0, err
 		}
@@ -61,7 +85,7 @@ func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int) (int, err
 func (m *BattleModel) Get(rowid, battleID int) (*models.Battle, error) {
 	b := &models.Battle{}
 
-	// Get a list of battles that are available for this user
+	// Get a single battle that are available for this user
 	stmt := `SELECT 
 				p1.rowid as Player1ID, p1.screenName as Player1ScreenName, 
 				p2.rowid as Player2ID, p2.screenName as Player2ScreenName 
@@ -126,8 +150,8 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 				LEFT OUTER JOIN Players p4 ON p4.rowid = b.player2ID
 			WHERE player2ID = ?;`
 	rows, err := m.DB.Query(stmt, rowid, rowid)
-	fmt.Println("The big sql stmt:", stmt, err.Error())
 	if err != nil {
+		fmt.Println("The big sql stmt:", stmt, err.Error())
 		return nil, err
 	}
 	defer rows.Close()

@@ -12,10 +12,10 @@ type PositionModel struct {
 func (m *PositionModel) Insert(boardID int, battleshipID int, playerID int, coordX int, coordY int, pinColor string) (int, error) {
 	return 0, nil
 }
-func (m *PositionModel) Get(id int) (*models.Position, error) {
+func (m *PositionModel) Get(id int) (*models.Positions, error) {
 	return nil, nil
 }
-func (m *PositionModel) List() ([]*models.Position, error) {
+func (m *PositionModel) List() ([]*models.Positions, error) {
 	return nil, nil
 }
 func (m *PositionModel) Update(boardID int, playerID int, coordX int, coordY string, pinColor int) (int, error) {

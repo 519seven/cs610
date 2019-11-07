@@ -18,6 +18,6 @@ if [ ! -f cert.pem ] || [ ! -f key.pem ]; then
   printf "Generating self-signed TLS certificate for localhost and storing in cert.pem file\n"
 else
   printf "Certs already exist!\n"
-  exit 0
 fi
+printf -- "------------------ Remember to use HTTPS ------------------\n"
 exit 0

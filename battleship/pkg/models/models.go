@@ -29,8 +29,8 @@ type Battle struct {
 type Board struct {
 	ID      			int
 	Title   			string
-	OwnerID 			int
-	GameID  			sql.NullInt64
+	PlayerID 			int
+	BattleID  			sql.NullInt64
 	Created 			time.Time
 }
 
@@ -52,25 +52,12 @@ type Player struct {
 	LastLogin  			time.Time
 }
 
-type Position struct {
-	ID           		int
-	BoardID      		int
-	ShipID		 		int
-	UserID				int
-	CoordX				int
-	CoordY				string
-	PinColor			int
-}
-
-type PositionsOnBoard struct {
-	BoardID      		int
-	BoardName   		string
-	OwnerID 			int
-	GameID  			sql.NullInt64
-	Created 			time.Time
+type Positions struct {
+	ID      			int
+	PlayerID 			int
+	BattleID  			sql.NullInt64
 	PositionID      	int
 	ShipType	 		string
-	UserID				int
 	CoordX				int
 	CoordY				string
 	PinColor			int

@@ -46,8 +46,8 @@ type templateDataBoard struct {
 	Form					*forms.Form
 	IsAuthenticated			bool
 	ScreenName				string
-	PositionsOnBoard       	*models.PositionsOnBoard
-	PositionsOnBoards      	[]*models.PositionsOnBoard
+	Board					*models.Board
+	Positions		      	[]*models.Positions
 	MainGrid				template.HTML
 }
 // Board List
@@ -95,6 +95,7 @@ type templateDataPlayers struct {
 	Player      			*models.Player
 	Players     			[]*models.Player
 }
+/*
 // Position
 type templateDataPosition struct {
 	CSRFToken				string
@@ -107,6 +108,7 @@ type templateDataPosition struct {
 	Positions   			[]*models.Position
 	MainGrid				template.HTML
 }
+*/
 // Sign-Up
 type templateDataSignup struct {
 	CSRFToken				string

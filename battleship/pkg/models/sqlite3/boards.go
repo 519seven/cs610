@@ -98,21 +98,17 @@ func (m *BoardModel) Create(rowid int, boardName string) (int, error) {
 	return int(boardID), nil
 }
 
-// Get board info - name of board and the positions that have been saved on it
-func (m *BoardModel) Get(rowid int) (*models.PositionsOnBoard, error) {
-	stmt := `SELECT b.rowid as boardID, boardName, b.userID, gameID, created,
-		p.rowid as positionID, s.shipType, p.userID, p.coordX, p.coordY, p.pinColor
+// Get board info - name of board
+func (m *BoardModel) GetInfo(rowid int) (*models.Board, error) {
+	stmt := `SELECT 
+		b.rowid as ID, b.boardName as Title, b.userID as playerID, 
+		b.gameID as battleID, b.created
 		FROM Boards b
-		LEFT OUTER JOIN Positions p ON
-		p.boardID = b.rowid 
-		LEFT OUTER JOIN Ships s ON
-		s.rowid = p.shipID
-		WHERE b.rowid = ?` // and userID = this user's ID
-	p := &models.PositionsOnBoard{}
+		WHERE b.rowid = ?`
+	b := &models.Board{}
+
 	err := m.DB.QueryRow(stmt, rowid).Scan(
-			&p.BoardID, &p.BoardName, &p.OwnerID, &p.GameID, 
-			&p.Created, &p.PositionID, &p.ShipType, &p.UserID, 
-			&p.CoordX, &p.CoordY, &p.PinColor)
+			&b.ID, &b.Title, &b.PlayerID, &b.BattleID, &b.Created)
 	if err != nil {
 		if xerrors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNoRecord
@@ -120,7 +116,41 @@ func (m *BoardModel) Get(rowid int) (*models.PositionsOnBoard, error) {
 			return nil, err
 		}
 	}
-	return p, nil
+	return b, nil
+}
+
+// Get positions on board
+func (m *BoardModel) GetPositions(rowid int) ([]*models.Positions, error) {
+	positions := []*models.Positions{}
+
+	stmt := `SELECT 
+		b.rowid as boardID, p.userID as playerID, b.gameID as battleID, 
+		p.rowid as positionID, s.shipType, p.coordX, p.coordY, p.pinColor
+		FROM Boards b
+		LEFT OUTER JOIN Positions p ON
+		p.boardID = b.rowid 
+		LEFT OUTER JOIN Ships s ON
+		s.rowid = p.shipID
+		WHERE b.rowid = ?` // and userID = this user's ID
+	rows, err := m.DB.Query(stmt, rowid)
+	for rows.Next() {
+		p := &models.Positions{}
+		// Assign fields in rowset to Board model's "properties"
+		err = rows.Scan(&p.ID, &p.PlayerID, &p.BattleID, &p.PositionID, &p.ShipType, &p.CoordX, &p.CoordY, &p.PinColor)
+		if err != nil {
+			return nil, err
+		}
+		positions = append(positions, p)
+	}
+	if err != nil {
+		if xerrors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrNoRecord
+		} else {
+			return nil, err
+		}
+	}
+
+	return positions, nil
 }
 
 // Insert coordinates for a board
@@ -191,7 +221,7 @@ func (m *BoardModel) List(rowid int) ([]*models.Board, error) {
 	for rows.Next() {
 		s := &models.Board{}
 		// Assign fields in rowset to Board model's "properties"
-		err = rows.Scan(&s.ID, &s.Title, &s.OwnerID, &s.GameID, &s.Created)
+		err = rows.Scan(&s.ID, &s.Title, &s.PlayerID, &s.BattleID, &s.Created)
 		if err != nil {
 			return nil, err
 		}
@@ -204,10 +234,10 @@ func (m *BoardModel) List(rowid int) ([]*models.Board, error) {
 	return boards, nil
 }
 
-func (m *BoardModel) Update(rowid int, boardName string, userID int, gameID int) (int, error) {
+func (m *BoardModel) Update(rowid int, boardName string, userID int, battleID int) (int, error) {
 	// to split over multpile lines, use backquotes not double quotes
-	stmt := `UPDATE Boards SET boardName = ?, userID = ?, gameID= ? WHERE rowid = ?`
-	_, err := m.DB.Exec(stmt, boardName, userID, gameID, rowid)
+	stmt := `UPDATE Boards SET boardName = ?, userID = ?, battleID = ? WHERE rowid = ?`
+	_, err := m.DB.Exec(stmt, boardName, userID, battleID, rowid)
 	if err != nil {
 		return 0, err
 	}
