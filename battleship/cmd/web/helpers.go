@@ -134,21 +134,30 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 
 // Pre-processing HTML/template data
 // - Draw the board and pass in the HTML
-func (app *application) preprocessBoardFromData(p *models.PositionsOnBoard) template.HTML {
+func (app *application) preprocessBoardFromData(p []*models.Positions) template.HTML {
+	var fieldValue string
+
 	gameBoard := "<table><th>&nbsp;</th>"
-	fmt.Println("My struct:", p)
-	fmt.Println("----end")
 	for _, col := range "ABCDEFGHIJ" {
 		gameBoard += fmt.Sprintf("<th>%s</th>", string(col))
 	}
 	for row := 1; row < 11; row++ {
 		gameBoard += fmt.Sprintf("<tr><td>%d</td>", row)
-		rowStr := strconv.Itoa(row)
+		//rowStr := strconv.Itoa(row)
 		for _, col := range "ABCDEFGHIJ" {
-
+			fieldValue = ""
+			for _, onePosition := range p {
+				if onePosition.CoordX == row && onePosition.CoordY == string(col) {
+					if strings.ToUpper(onePosition.ShipType) == "CRUISER" {
+						fieldValue = strings.ToUpper(onePosition.ShipType[1:2])
+					} else {
+						fieldValue = strings.ToUpper(onePosition.ShipType[0:1])
+					}
+				}
+			}
 			gameBoard += fmt.Sprintf(
 				"<td><input type='text'	maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", 
-				row, string(col), "shipXY"+rowStr+string(col))
+				row, string(col), fieldValue)
 		}
 		gameBoard += "</tr>"
 	}
@@ -301,9 +310,9 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	if td == nil {
 		td = &templateDataBoard{}
 	}
-	if td.PositionsOnBoard != nil {
-		fmt.Println("PositionsOnBoard is not nil.  We should build MainGrid here...")
-		td.MainGrid = app.preprocessBoardFromData(td.PositionsOnBoard)
+	if td.Positions != nil {
+		fmt.Println("Positions is not nil.  We should build MainGrid here...")
+		td.MainGrid = app.preprocessBoardFromData(td.Positions)
 	} else {
 		td.MainGrid = app.preprocessBoardFromRequest(r)
 	}
@@ -313,10 +322,6 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
 	td.ScreenName = app.session.GetString(r, "screenName")
-	// Positions
-	//td.PositionsOnBoard = app.positionsOnBoard(r)
-	//td.PositionsOnBoards = app.positionsOnBoard(r)
-	// Add a new string containing processed template snippet
 	return td
 }
 // Board

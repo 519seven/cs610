@@ -206,6 +206,26 @@ func (app *application) about(w http.ResponseWriter, r *http.Request) {
 // -----------------------------------------------------------------------------
 // BEGIN BATTLES
 
+// Accept battle (challenge) and redirect to view the battlefield
+func (app *application) acceptBattle(w http.ResponseWriter, r *http.Request) {
+	userID := app.session.GetInt(r, "authenticatedUserID")
+	form := forms.New(r.PostForm)
+	battleID, err := strconv.Atoi(form.Get("battleID"))
+	if !form.Valid() || err != nil {
+		app.session.Put(r, "flash", "Unexplained error!")
+		app.serverError(w, errors.New("Invalid form structure"))
+		return
+	}
+	_, err = app.battles.Accept(userID, battleID)
+	if err != nil {
+		app.session.Put(r, "flash", "The person who accepted this board was not the person challenged!")
+		app.serverError(w, err)
+		return
+	}
+	app.session.Put(r, "flash", "You have accepted the battle!")
+	http.Redirect(w, r, fmt.Sprintf("/battle/view/%d", battleID), http.StatusSeeOther)
+}
+// Get battle
 func (app *application) getBattle(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Still to be done - The battlefield, which will have two boards and an active battle..."))
 }
@@ -228,6 +248,7 @@ func (app *application) listBattles(w http.ResponseWriter, r *http.Request) {
 		Battles: 			b,
 	})
 }
+// View battle
 func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Still to be done - A 'read-only' battlefield; from there you can click to access the active battlefield (/battle/get)..."))
 }
@@ -277,7 +298,7 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 			shipXY := form.Get("shipXY"+rowStr+colStr)
 			if shipXY != "" {
 				// Only I, the program, should be permitted to update this as a player enters a game
-				//gameID := r.URL.Query().Get("gameID")
+				//battleID := r.URL.Query().Get("battleID")
 				// userID should be gotten from somewhere else
 				//userID = r.PostForm("userID")
 
@@ -389,11 +410,12 @@ func (app *application) createBoardForm(w http.ResponseWriter, r *http.Request) 
 func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 	boardID, err := strconv.Atoi(r.URL.Query().Get(":id"))
 	if err != nil || boardID < 1 {
+		app.infoLog.Println("Invalid boardID")
 		app.notFound(w)
 		return
 	}
 	app.infoLog.Println("boardID: ", boardID)
-	s, err := app.boards.Get(boardID)
+	p, err := app.boards.GetPositions(boardID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
@@ -402,8 +424,17 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	b, err := app.boards.GetInfo(boardID)
+	if err != nil {
+		if xerrors.Is(err, models.ErrNoRecord) {
+			app.notFound(w)
+		} else {
+			app.serverError(w, err)
+		}
+	}
 	app.renderBoard(w, r, "display.board.page.tmpl", &templateDataBoard{
-		PositionsOnBoard: 	s,
+		Positions: 	p,
+		Board:				b,
 	})
 
 }
@@ -450,8 +481,9 @@ func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	boardName := r.URL.Query().Get("boardName")
 	userID := 123
-	gameID := 1
-	id, err = app.boards.Update(id, boardName, userID, gameID)
+	battleID := 0
+	app.errorLog.Println("Fail")
+	id, err = app.boards.Update(id, boardName, userID, battleID)
 	if err != nil {
 		app.serverError(w, err)
 		return

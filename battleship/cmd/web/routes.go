@@ -30,10 +30,12 @@ func (app *application) routes() http.Handler {
 	mux.Get("/status/battles/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBattles))
 	// "accept" a challenge from another player
 	mux.Post("/status/confirm/:battleID", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.confirmStatus))
+	// accept a challenge and redirect to /battle/view
+	mux.Post("/battle/accept", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.acceptBattle))
 	// access a battlefield and continue battling - the battleID will be sent in form post
 	mux.Post("/battle/get", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.getBattle))
 	// view a non-playable version of a battle - the battleID will be sent in form post
-	mux.Post("/battle/view", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.viewBattle))
+	mux.Get("/battle/view/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.viewBattle))
 	/*
 	mux.HandleFunc("/battle/create", app.createBattle)
 	mux.HandleFunc("/battle/list", app.listBattle)
