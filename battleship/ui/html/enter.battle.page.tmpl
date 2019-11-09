@@ -1,0 +1,27 @@
+{{template "base" .}}
+
+{{define "title"}}View Board{{end}}
+{{define "main"}}
+    <div>
+        <label>Welcome to The Battle of {{.Battle.Title}}</label>
+        <table border=1>
+            <tr><td>Your Board</td><tr>
+            <tr>
+                <td>
+                    {{.ChallengerGrid}}
+                </td>
+            </tr>
+            <tr><td>Your Opponent's Board</td><tr>
+            <tr>
+                <td>
+                    <form action='/battle/strike' method=POST>
+                        <input type='hidden' name='csrf_token' value='{{$.CSRFToken}}'>
+                        <input type='hidden' name='boardID' value='{{.Battle.Player2BoardID}}'>
+                        {{.OpponentGrid}}
+                    </form>
+                </td>
+            </tr>
+        </table>
+    </div>
+</form>
+{{end}}

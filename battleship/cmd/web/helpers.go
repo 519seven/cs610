@@ -49,7 +49,7 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		 turn INTEGER)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
-		(boardName TEXT, userID INTEGER, gameID INTEGER, 
+		(boardName TEXT, playerID INTEGER, 
 		 created DATETIME DEFAULT CURRENT_TIMESTAMP, isChosen BOOLEAN)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Players 
@@ -58,8 +58,8 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		 inBattle BOOLEAN, lastLogin DATETIME)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Positions 
-		(boardID INTEGER, shipID INTEGER, 
-		 userID INTEGER, coordX INTEGER, coordY TEXT, pinColor TEXT)`)
+		(boardID INTEGER, shipID INTEGER, playerID INTEGER, 
+		 coordX INTEGER, coordY TEXT, pinColor TEXT)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Ships 
 		(shipType TEXT, shipLength INTEGER)`)
@@ -134,8 +134,9 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 
 // Pre-processing HTML/template data
 // - Draw the board and pass in the HTML
-func (app *application) preprocessBoardFromData(p []*models.Positions) template.HTML {
-	var fieldValue string
+func (app *application) preprocessBoardFromData(p []*models.Positions, permissions string) template.HTML {
+	var fieldValue string; fieldValue = ""
+	var checked string; checked = ""
 
 	gameBoard := "<table><th>&nbsp;</th>"
 	for _, col := range "ABCDEFGHIJ" {
@@ -154,10 +155,25 @@ func (app *application) preprocessBoardFromData(p []*models.Positions) template.
 						fieldValue = strings.ToUpper(onePosition.ShipType[0:1])
 					}
 				}
+				if onePosition.PinColor != 0 {
+					checked = "CHECKED"
+				} else {
+					checked = ""
+				}
 			}
-			gameBoard += fmt.Sprintf(
-				"<td><input type='text'	maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", 
-				row, string(col), fieldValue)
+			if permissions == "ro" {
+				gameBoard += "<td>"
+				gameBoard += fmt.Sprintf("<input type='checkbox' name=\"shipXY%d%s\" value=\"%s\">%s</td>", 
+					row, string(col), fieldValue, fieldValue)
+			} else if permissions == "rw" {
+				gameBoard += fmt.Sprintf(
+					"<td><input type='text'	maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", 
+					row, string(col), fieldValue)
+			} else if permissions == "hidden" {
+				gameBoard += "<td>"
+				gameBoard += fmt.Sprintf("<input type='checkbox' name=\"shipXY%d%s\" %s></td>", 
+					row, string(col), checked)
+			}
 		}
 		gameBoard += "</tr>"
 	}
@@ -201,32 +217,6 @@ func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Reque
 	return td
 }
 
-// Add default data to player info screens
-func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Request) *templateDataPlayer {
-	if td == nil {
-		td = &templateDataPlayer{}
-	}
-	td.CSRFToken = nosurf.Token(r)
-	td.CurrentYear = time.Now().Year()
-	td.Flash = app.session.PopString(r, "flash")
-	td.IsAuthenticated = app.isAuthenticated(r)
-	td.ScreenName = app.session.GetString(r, "screenName")
-	return td
-}
-
-// Add default data to player info screens
-func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.Request) *templateDataPlayers {
-	if td == nil {
-		td = &templateDataPlayers{}
-	}
-	td.CSRFToken = nosurf.Token(r)
-	td.CurrentYear = time.Now().Year()
-	td.Flash = app.session.PopString(r, "flash")
-	td.IsAuthenticated = app.isAuthenticated(r)
-	td.ScreenName = app.session.GetString(r, "screenName")
-	return td
-}
-
 // Add default data to signup screens
 func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Request) *templateDataSignup {
 	if td == nil {
@@ -246,12 +236,31 @@ func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Req
 	if td == nil {
 		td = &templateDataBattle{}
 	}
-	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	// Default the boardID to 0
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	} else {
+		td.ActiveBoardID = 0
+	}
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
 	td.ScreenName = app.session.GetString(r, "screenName")
+	if td.ChallengerPositions != nil {
+		fmt.Println("Positions is not nil.  We should build MainGrid here...")
+		td.ChallengerGrid = app.preprocessBoardFromData(td.ChallengerPositions, "ro")
+	} else {
+		td.ChallengerGrid = app.preprocessBoardFromRequest(r)
+	}
+	if td.OpponentPositions != nil {
+		fmt.Println("Positions is not nil.  We should build MainGrid here...")
+		td.OpponentGrid = app.preprocessBoardFromData(td.OpponentPositions, "hidden")
+	} else {
+		td.OpponentGrid = app.preprocessBoardFromRequest(r)
+	}
 	return td
 }
 // renderBattle
@@ -277,7 +286,14 @@ func (app *application) addDefaultDataBattles(td *templateDataBattles, r *http.R
 	if td == nil {
 		td = &templateDataBattles{}
 	}
-	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	// Default the boardID to 0
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	} else {
+		td.ActiveBoardID = 0
+	}
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
@@ -312,11 +328,18 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	}
 	if td.Positions != nil {
 		fmt.Println("Positions is not nil.  We should build MainGrid here...")
-		td.MainGrid = app.preprocessBoardFromData(td.Positions)
+		td.MainGrid = app.preprocessBoardFromData(td.Positions, "ro")
 	} else {
 		td.MainGrid = app.preprocessBoardFromRequest(r)
 	}
-	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	// Default the boardID to 0
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	} else {
+		td.ActiveBoardID = 0
+	}
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
@@ -347,14 +370,15 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	if td == nil {
 		td = &templateDataBoards{}
 	}
-	boardID := app.session.GetInt(r, "boardID")
-	if boardID > 0 {
-		td.ActiveBoardID = boardID
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = activeBoardID
 	} else {
-		fmt.Println("boardID is empty:", boardID)
+		fmt.Println("boardID is empty:", activeBoardID)
 		td.ActiveBoardID = 0
 	}
-	td.AuthenticatedUserID = app.session.GetInt(r, "authenticatedUserID")
+	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
@@ -424,7 +448,7 @@ func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name
 	
 	// Remove session information
 	if app.session != nil {
-		app.session.Remove(r, "authenticatedUserID")
+		app.session.Remove(r, "authenticatedPlayerID")
 		app.session.Remove(r, "boardID")
 		app.session.Remove(r, "battleID")
 		fmt.Println("Session information has been removed...")
@@ -439,6 +463,19 @@ func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name
 // ----------------------------------------------------------------------------
 
 // Player
+// Add default data to player info screens
+func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Request) *templateDataPlayer {
+	if td == nil {
+		td = &templateDataPlayer{}
+	}
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
+	return td
+}
+
 func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayer) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -446,7 +483,20 @@ func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, nam
 		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
 		return
 	}
-
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = activeBoardID
+	} else {
+		fmt.Println("boardID is empty:", activeBoardID)
+		td.ActiveBoardID = 0
+	}
+	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
@@ -459,6 +509,19 @@ func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, nam
 }
 
 // Players
+// Add default data to player info screens
+func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.Request) *templateDataPlayers {
+	if td == nil {
+		td = &templateDataPlayers{}
+	}
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
+	return td
+}
+
 func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayers) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -466,7 +529,20 @@ func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, na
 		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
 		return
 	}
-
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = activeBoardID
+	} else {
+		fmt.Println("boardID is empty:", activeBoardID)
+		td.ActiveBoardID = 0
+	}
+	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year

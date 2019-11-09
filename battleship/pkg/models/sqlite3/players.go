@@ -81,7 +81,6 @@ func (m *PlayerModel) Insert(screenName string, emailAddress string, password st
 	stmt := `INSERT INTO Players (screenName, emailAddress, hashedPassword, created, loggedIn, lastLogin) VALUES (?, ?, ?, ?, ?, ?)`
 	result, err := m.DB.Exec(stmt, screenName, emailAddress, hashedPassword, time.Now(), 0, time.Now())
 	if err != nil {
-		fmt.Println("ERROR - ", err.Error())
 		if strings.Contains(err.Error(), "UNIQUE constraint failed:") {
 			// Our unique requirement for email address has been violated
 			return 0, models.ErrDuplicateEmail
@@ -91,7 +90,6 @@ func (m *PlayerModel) Insert(screenName string, emailAddress string, password st
 	}
 	rowid, err := result.LastInsertId() // confirmed! sqlite3 driver has this functionality!
 	if err != nil {
-		fmt.Println("[ERROR] Error:", err.Error())
 		return 0, err
 	}
 	// id has type int64; convert to int type before returning
@@ -109,14 +107,9 @@ func (m *PlayerModel) List(rowid int, status string) ([]*models.Player, error) {
 	} else if rowid != 0 {
 		stmt += " WHERE rowid != ?"
 	}
-	fmt.Println("INFO [players.List 1]", stmt)
-	if err := m.DB.QueryRow(stmt); err != nil {
-		fmt.Println("ERROR - Empty result set")
-	}
-	fmt.Println("here...")
+	fmt.Println("[players.List 1]", stmt)
 	rows, err := m.DB.Query(stmt, rowid)
 	if err != nil {
-		fmt.Println("ERROR [players.List 1] stmt", stmt, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -127,19 +120,17 @@ func (m *PlayerModel) List(rowid int, status string) ([]*models.Player, error) {
 		s := &models.Player{}
 		err = rows.Scan(&s.ID, &s.ScreenName, &s.EmailAddress, &s.LoggedIn, &s.InBattle, &s.Created, &s.LastLogin)
 		if err != nil {
-			fmt.Println("ERROR [players.List 2] Error:", err.Error())
+			fmt.Println("[players.List 2] Error:", err.Error())
 			return nil, err
 		}
 		players = append(players, s)
 	}
-	fmt.Println("there...")
 	if err = rows.Err(); err != nil {
 		//fmt.Println("[ERROR] Error:", err.Error())
 		return nil, err
 	}
-	fmt.Println("there...")
 	if rowid == 0 && status == "" && len(players) == 0 {
-		return nil, errors.New("empty")
+		return nil, models.ErrNoRecord
 	}
 	return players, nil
 }

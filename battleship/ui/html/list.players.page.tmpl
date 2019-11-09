@@ -17,7 +17,7 @@
 			</tr>
 			{{range .}}
 			<tr>
-				<td><input type=radio name=userID value={{.ID}}></td>
+				<td>{{if ne $.ActiveBoardID 0}}<input type=radio name=playerID value={{.ID}}>{{else}}<a href="/board/list">Select board first</a>{{end}}</td>
 				<td>{{.ScreenName}}</td>
 				<td>{{.EmailAddress}}</td>
 				<td>{{.LoggedIn}}</td>
@@ -31,7 +31,7 @@
 	{{end}}
 	<script type='text/javascript'>
 	$(document).ready(function() { 
-		$('input[name=userID]').change(function(){
+		$('input[name=playerID]').change(function(){
 			$('form').submit();
 		});
 	});

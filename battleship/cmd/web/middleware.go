@@ -62,23 +62,23 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 
 func (app *application) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// check if authenticatedUserID is present; if not, call the next handler
-		fmt.Println("checking for authenticatedUserID")
-		exists := app.session.Exists(r, "authenticatedUserID")
+		// check if authenticatedPlayerID is present; if not, call the next handler
+		fmt.Println("checking for authenticatedPlayerID")
+		exists := app.session.Exists(r, "authenticatedPlayerID")
 		if !exists {
-			fmt.Println("authenticatedUserID does not exist")
+			fmt.Println("authenticatedPlayerID does not exist")
 			next.ServeHTTP(w, r)
 			return
 		}
-		fmt.Println("authenticatedUserID exists?:", exists)
+		fmt.Println("authenticatedPlayerID exists?:", exists)
 
 		// fetch details of current user from database
 		// if no matching record was found, remove their session info
 		// and call the next handler in the chain as normal
-		player, err := app.players.Get(app.session.GetInt(r, "authenticatedUserID"))
+		player, err := app.players.Get(app.session.GetInt(r, "authenticatedPlayerID"))
 		if err != nil {
 			if app.session != nil {
-				app.session.Remove(r, "authenticatedUserID")
+				app.session.Remove(r, "authenticatedPlayerID")
 			}
 		}
 		fmt.Println("Player ID:", player.ID)
@@ -86,7 +86,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		if player.ID == 0 {					// or no rows in the result set
 			fmt.Println("Session has not been established:", err.Error())
 			if app.session != nil {
-				app.session.Remove(r, "authenticatedUserID")
+				app.session.Remove(r, "authenticatedPlayerID")
 			}
 			// if user is invalid, pass the original, unchanged 
 			// *http.Request to the next handler in the chain
