@@ -13,7 +13,7 @@ type BattleModel struct {
 }
 
 // Accept a challenge (battle)
-func (m *BattleModel) Accept(player2ID, battleID int) (int, error) {
+func (m *BattleModel) Accept(player2ID, boardID, battleID int) (int, error) {
 	player2IDFromDB := 0
 	// Check to be sure that the person accepting this battle is matches the "player2ID"
 	stmt := `SELECT player2ID FROM Battles WHERE rowid = ? AND player2Accepted = false`
@@ -24,8 +24,8 @@ func (m *BattleModel) Accept(player2ID, battleID int) (int, error) {
 
 	if player2ID == player2IDFromDB {
 		// Only player2 can accept a challenge
-		stmt = `UPDATE Battles SET player2Accepted = true WHERE rowid = ?`
-		_, err := m.DB.Exec(stmt, battleID)
+		stmt = `UPDATE Battles SET player2Accepted = true, player2BoardID = ? WHERE player2ID = ? AND rowid = ?`
+		_, err := m.DB.Exec(stmt, boardID, player2ID, battleID)
 		if err != nil {
 			return 0, err
 		}
@@ -82,27 +82,31 @@ func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int) (int, err
 }
 
 // Get - return a single battle; this is for the battle board
-func (m *BattleModel) Get(rowid, battleID int) (*models.Battle, error) {
+func (m *BattleModel) Get(playerID, battleID int) (*models.Battle, error) {
 	b := &models.Battle{}
 
-	// Get a single battle that are available for this user
-	stmt := `SELECT 
-				p1.rowid as Player1ID, p1.screenName as Player1ScreenName, 
-				p2.rowid as Player2ID, p2.screenName as Player2ScreenName 
+	// Get a single battle that is available for this user
+	stmt := `SELECT b.rowid,
+				p2.screenName||' vs. '||p1.screenName as battleTitle, 
+				p1.rowid as Player1ID, p1.screenName as Player1ScreenName, IFNULL(b.player1BoardID, 0),
+				p2.rowid as Player2ID, p2.screenName as Player2ScreenName, IFNULL(b.player2BoardID, 0)
 				FROM Battles as b
 				JOIN Players as p1 ON p1.rowid = b.player1ID
 				JOIN Players as P2 ON p2.rowid = b.player2ID
-				WHERE b.player2ID = ?`
-	err := m.DB.QueryRow(stmt, rowid).Scan(&b.ID, &b.Player1ID, &b.Player1ScreenName, &b.Player2ID, &b.Player2ScreenName)
+				WHERE b.player1ID = ? OR b.player2ID = ? AND b.rowid = ?`
+	fmt.Println("battles get stmt:", stmt)
+	err := m.DB.QueryRow(stmt, playerID, playerID, battleID).Scan(
+		&b.ID, &b.Title, 
+		&b.Player1ID, &b.Player1ScreenName, &b.Player1BoardID, 
+		&b.Player2ID, &b.Player2ScreenName, &b.Player2BoardID)
 	if err != nil {
-		fmt.Println("[ERROR] stmt", stmt, err.Error())
 		return nil, err
 	}
 	return b, nil
 }
 
 // GetChallenger - See if there are any challengers out there
-func (m *BattleModel) GetChallenger(currentUserID int) (int, error) {
+func (m *BattleModel) GetChallenger(currentPlayerID int) (int, error) {
 	var challenger int
 	stmt := `SELECT player1ID 
 				FROM Battles 
@@ -110,7 +114,7 @@ func (m *BattleModel) GetChallenger(currentUserID int) (int, error) {
 				AND player2ID = ? 
 				AND player2Accepted == false 
 				LIMIT 0, 1`
-	rows, err := m.DB.Query(stmt, currentUserID)
+	rows, err := m.DB.Query(stmt, currentPlayerID)
 	if err != nil {
 		return 0, err
 	}
@@ -119,7 +123,7 @@ func (m *BattleModel) GetChallenger(currentUserID int) (int, error) {
 	for rows.Next() {
 		err := rows.Scan(&challenger)
 		if err != nil {
-			fmt.Println("ERROR - While retrieving battleID:", err)
+			return 0, err
 		}
 	}
 
@@ -128,27 +132,31 @@ func (m *BattleModel) GetChallenger(currentUserID int) (int, error) {
 
 // GetAll - Get all active battles or challenges (this could be combined with GetOpen below)
 func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
-	stmt := `SELECT
-				b.rowid, b1.boardName,
-				player1ID, p1.screenName, player1Accepted, 
-				player2ID, p2.screenName, player2Accepted,
-				challengeDate as dateAsked, turn
-			FROM Battles b
-				LEFT OUTER JOIN Boards b1 ON b1.userID = b.player1ID
-				LEFT OUTER JOIN Players p1 ON p1.rowid = b.player1ID
-				LEFT OUTER JOIN Players p2 ON p2.rowid = b.player2ID
-			WHERE b.player1ID = ?
-			UNION
-			SELECT 
-				b.rowid, b2.boardName,
-				player1ID, p3.screenName, player1Accepted, 
-				player2ID, p4.screenName, player2Accepted,
-				challengeDate as dateAsked, turn
-			FROM Battles b
-				LEFT OUTER JOIN Boards b2 ON b2.userID = b.player2ID
-				LEFT OUTER JOIN Players p3 ON p3.rowid = b.player2ID
-				LEFT OUTER JOIN Players p4 ON p4.rowid = b.player2ID
-			WHERE player2ID = ?;`
+
+	// I think I want to swap player1 and player2 things in the second SELECT ***
+	
+	stmt := `
+	SELECT 
+	b1.rowid, player1ID, p1.screenName as challenger, bo1.boardName, 
+	player1Accepted, player2ID, p2.screenName as opponent, '', 
+	player2Accepted, challengeDate as dateAsked, turn 
+	FROM Battles b1 
+	LEFT OUTER JOIN Boards bo1 ON bo1.rowid = b1.player1BoardID 
+	LEFT OUTER JOIN Players p1 ON p1.rowid = b1.player1ID 
+	LEFT OUTER JOIN Players p2 ON p2.rowid = b1.player2ID 
+	WHERE b1.player1ID = ? 
+	UNION 
+	SELECT
+	b2.rowid, player1ID, p4.screenName as challenger, '',
+	player1Accepted, player2ID, p3.screenName as opponent, bo2.boardName, 
+	player2Accepted, challengeDate as dateAsked, turn 
+	FROM Battles b2 
+	LEFT OUTER JOIN Boards bo2 ON bo2.rowid = b2.player2BoardID 
+	LEFT OUTER JOIN Players p3 ON p3.rowid = b2.player2ID 
+	LEFT OUTER JOIN Players p4 ON p4.rowid = b2.player1ID 
+	WHERE b2.player2ID = ?;
+	`
+	fmt.Println("The big sql stmt:", stmt)
 	rows, err := m.DB.Query(stmt, rowid, rowid)
 	if err != nil {
 		fmt.Println("The big sql stmt:", stmt, err.Error())
@@ -161,9 +169,9 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 	for rows.Next() {
 		b := &models.Battle{}
 		err = rows.Scan(
-			&b.ID, &b.BoardTitle, 
-			&b.Player1ID, &b.Player1ScreenName, &b.Player1Accepted, 
-			&b.Player2ID, &b.Player2ScreenName, &b.Player2Accepted,
+			&b.ID, 
+			&b.Player1ID, &b.Player1ScreenName, &b.Player1BoardName, &b.Player1Accepted,
+			&b.Player2ID, &b.Player2ScreenName, &b.Player2BoardName, &b.Player2Accepted,
 			&b.ChallengeDate, &b.Turn)
 		if err != nil {
 			return nil, err

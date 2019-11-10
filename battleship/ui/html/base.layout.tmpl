@@ -14,33 +14,32 @@
 		<header>
 			<h1>Battleship - {{template "title" .}}</h1>
 		</header>
-		{{if .IsAuthenticated}}
 		<nav>
-			Logged in as {{.ScreenName}}
+		{{if .IsAuthenticated}}
+				Logged in as {{.ScreenName}}
+		{{end}}
+		{{if not .IsAuthenticated}}
+			<a href='/login'>Login</a>
+		{{end}}
+			<a href='/about'>About</a>
 		</nav>
 		<nav>
+		{{if .IsAuthenticated}}
 			<a href='/board/list'>Boards</a>
 			<a href='/player/list'>Active Players</a>
 			<a href='/status/battles/list'>Challenges</a>
-		</nav>
 		{{end}}
-		<nav>
-			{{if not .IsAuthenticated}}
-			<a href='/signup'>Sign Up</a>
-			{{end}}
-			{{block "accountActions" .}}
-			{{if .IsAuthenticated}}
+		{{if not .IsAuthenticated}}
+				<a href='/signup'>Sign Up</a>
+		{{end}}
+		{{block "accountActions" .}}
+		{{if .IsAuthenticated}}
 			<form action='/logout' method='POST'>
-				<!-- CSRF token //-->
 				<input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
 				<button>Logout</button>
 			</form>
-			{{end}}
-			{{end}}
-			{{if not .IsAuthenticated}}
-			<a href='/login'>Login</a>
-			{{end}}
-			<!--<a href='/about'>About</a>//-->
+		{{end}}
+		{{end}}
 		</nav>
 		<main>
 			{{with .Flash}}

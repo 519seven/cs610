@@ -11,7 +11,16 @@ import (
 
 // These structs are used to pass more data to the template
 
-// Battle
+// About (if the user is logged in, the about page can use this information)
+type templateDataAbout struct {
+	ActiveBoardID			int
+	CSRFToken				string
+	CurrentYear 			int
+	Flash					string
+	IsAuthenticated			bool
+	ScreenName				string
+}
+// Battle (the battle containing two boards)
 type templateDataBattle struct {
 	ActiveBoardID			int
 	CSRFToken				string
@@ -20,13 +29,18 @@ type templateDataBattle struct {
 	Form					*forms.Form
 	IsAuthenticated			bool
 	ScreenName				string
+	Board					*models.Board
 	Battle      			*models.Battle
 	Battles     			[]*models.Battle
+	ChallengerPositions		[]*models.Positions
+	ChallengerGrid			template.HTML
+	OpponentPositions		[]*models.Positions
+	OpponentGrid			template.HTML
 }
-// Battles
+// Battles (list)
 type templateDataBattles struct {
 	ActiveBoardID			int
-	AuthenticatedUserID		int
+	AuthenticatedPlayerID		int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
@@ -39,7 +53,7 @@ type templateDataBattles struct {
 // Board
 type templateDataBoard struct {
 	ActiveBoardID			int
-	AuthenticatedUserID		int
+	AuthenticatedPlayerID		int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
@@ -53,7 +67,7 @@ type templateDataBoard struct {
 // Board List
 type templateDataBoards struct {
 	ActiveBoardID			int
-	AuthenticatedUserID		int
+	AuthenticatedPlayerID	int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
@@ -75,6 +89,8 @@ type templateDataLogin struct {
 }
 // Player
 type templateDataPlayer struct {
+	ActiveBoardID			int
+	AuthenticatedPlayerID	int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
@@ -86,6 +102,8 @@ type templateDataPlayer struct {
 }
 // Player List
 type templateDataPlayers struct {
+	ActiveBoardID			int
+	AuthenticatedPlayerID	int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string

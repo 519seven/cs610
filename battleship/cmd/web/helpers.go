@@ -1,5 +1,14 @@
 package main
 
+// ----------------------------------------------------------------------------
+// Copyright 2019 Peter J. Akey
+// helpers.go
+//
+// Two pieces to every part
+// - Template data helpers helps us add items that can be accessed within HTML
+// - Page/template rendering
+// ----------------------------------------------------------------------------
+
 import (
 	"bytes"
 	"database/sql"
@@ -17,9 +26,10 @@ import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 )
 
-/* ------------------------------------------------------------------------- */
-// database
+// ----------------------------------------------------------------------------
+// DATABASE
 
+// Initialize the database - create tables, pupulate ship types
 func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	// Do we need to remove the existing file before we begin?
 	if initdb == true {
@@ -49,7 +59,7 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		 turn INTEGER)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
-		(boardName TEXT, userID INTEGER, gameID INTEGER, 
+		(boardName TEXT, playerID INTEGER, 
 		 created DATETIME DEFAULT CURRENT_TIMESTAMP, isChosen BOOLEAN)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Players 
@@ -58,8 +68,8 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		 inBattle BOOLEAN, lastLogin DATETIME)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Positions 
-		(boardID INTEGER, shipID INTEGER, 
-		 userID INTEGER, coordX INTEGER, coordY TEXT, pinColor TEXT)`)
+		(boardID INTEGER, shipID INTEGER, playerID INTEGER, 
+		 coordX INTEGER, coordY TEXT, pinColor TEXT)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Ships 
 		(shipType TEXT, shipLength INTEGER)`)
@@ -71,43 +81,8 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	return db, nil
 }
 
-/* -------------------------------------------------------------------------- */
-// Method checking
-/*
-func checkMethod(m string, w http.ResponseWriter, r *http.Request) (http.ResponseWriter, bool) {
-	if m == "POST" {
-		// restrict this handler to HTTP POST methods only
-		if r.Method != http.MethodPost {
-			// Change response header map before WriteHeader or Write
-			w.Header().Set("Allow", http.MethodPost)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			// WriteHeader must be called explicity before any call to Write
-			//w.WriteHeader(405)
-			//w.Write([]byte("Method Not Allowed\r\n"))
-			// http.Error handles both WriteHeader and Write
-			return w, false
-		}
-		return w, true
-	} else if m == "GET" {
-		// restrict this handler to HTTP POST methods only
-		if r.Method != http.MethodGet {
-			// Change response header map before WriteHeader or Write
-			w.Header().Set("Allow", http.MethodGet)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			// WriteHeader must be called explicity before any call to Write
-			//w.WriteHeader(405)
-			//w.Write([]byte("Method Not Allowed\r\n"))
-			// http.Error handles both WriteHeader and Write
-			return w, false
-		}
-		return w, true
-	}
-	return w, true
-}
-*/
-
 // -----------------------------------------------------------------------------
-// General
+// GENERAL HELPERS
 
 // Clean form data
 func cleanCoordinates(coordinates string) string {
@@ -116,10 +91,12 @@ func cleanCoordinates(coordinates string) string {
 	return strings.Replace(cleanString, " ", "", -1)
 }
 
+
 // Check relationship between current user and a resource
 func (app *application) checkRelationship(resourceID int) bool {
 	return true
 }
+
 
 // For Authorization
 func (app *application) isAuthenticated(r *http.Request) bool {
@@ -132,10 +109,12 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 	return isAuthenticated
 }
 
-// Pre-processing HTML/template data
-// - Draw the board and pass in the HTML
-func (app *application) preprocessBoardFromData(p []*models.Positions) template.HTML {
-	var fieldValue string
+
+// Pre-processing HTML/template data based on data from database
+func (app *application) preprocessBoardFromData(p []*models.Positions, permissions string) template.HTML {
+	var fieldValue string; fieldValue = ""
+	var checked string; checked = ""
+	var onclick string; onclick = ""
 
 	gameBoard := "<table><th>&nbsp;</th>"
 	for _, col := range "ABCDEFGHIJ" {
@@ -154,16 +133,36 @@ func (app *application) preprocessBoardFromData(p []*models.Positions) template.
 						fieldValue = strings.ToUpper(onePosition.ShipType[0:1])
 					}
 				}
+				if onePosition.PinColor != 0 {
+					checked = "CHECKED"
+					onclick = "return false;"
+				} else {
+					checked = ""
+					onclick = ""
+				}
 			}
-			gameBoard += fmt.Sprintf(
-				"<td><input type='text'	maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", 
-				row, string(col), fieldValue)
+			if permissions == "ro" {
+				gameBoard += "<td>"
+				gameBoard += fmt.Sprintf("<input type='checkbox' name=\"shipXY%d%s\" value=\"%s\">%s</td>", 
+					row, string(col), fieldValue, fieldValue)
+			} else if permissions == "rw" {
+				gameBoard += fmt.Sprintf(
+					"<td><input type='text'	maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", 
+					row, string(col), fieldValue)
+			} else if permissions == "hidden" {
+				gameBoard += "<td>"
+				gameBoard += fmt.Sprintf("<input type='checkbox' name=\"shipXY%d%s\" %s %s></td>", 
+					row, string(col), checked, onclick)
+			}
 		}
 		gameBoard += "</tr>"
 	}
 	gameBoard += "</table>"
 	return template.HTML(gameBoard)
 }
+
+
+// Pre-processing HTML/template data based on data found in the form request
 func (app *application) preprocessBoardFromRequest(r *http.Request) template.HTML {
 	gameBoard := "<table><th>&nbsp;</th>"
 	for _, col := range "ABCDEFGHIJ" {
@@ -183,10 +182,6 @@ func (app *application) preprocessBoardFromRequest(r *http.Request) template.HTM
 	return template.HTML(gameBoard)
 }
 
-// ----------------------------------------------------------------------------
-// Create template data helpers so we can add items.  This information is 
-// automatically available each time we render a template
-// ----------------------------------------------------------------------------
 
 // Add default data to login screens
 func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Request) *templateDataLogin {
@@ -201,59 +196,87 @@ func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Reque
 	return td
 }
 
-// Add default data to player info screens
-func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Request) *templateDataPlayer {
-	if td == nil {
-		td = &templateDataPlayer{}
-	}
-	td.CSRFToken = nosurf.Token(r)
-	td.CurrentYear = time.Now().Year()
-	td.Flash = app.session.PopString(r, "flash")
-	td.IsAuthenticated = app.isAuthenticated(r)
-	td.ScreenName = app.session.GetString(r, "screenName")
-	return td
-}
-
-// Add default data to player info screens
-func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.Request) *templateDataPlayers {
-	if td == nil {
-		td = &templateDataPlayers{}
-	}
-	td.CSRFToken = nosurf.Token(r)
-	td.CurrentYear = time.Now().Year()
-	td.Flash = app.session.PopString(r, "flash")
-	td.IsAuthenticated = app.isAuthenticated(r)
-	td.ScreenName = app.session.GetString(r, "screenName")
-	return td
-}
-
-// Add default data to signup screens
-func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Request) *templateDataSignup {
-	if td == nil {
-		td = &templateDataSignup{}
-	}
-	td.CSRFToken = nosurf.Token(r)
-	td.CurrentYear = time.Now().Year()
-	td.IsAuthenticated = app.isAuthenticated(r)
-	return td
-}
 
 // ----------------------------------------------------------------------------
+// ABOUT
+
+// Add default data to create about template
+func (app *application) addDefaultDataAbout(td *templateDataAbout, r *http.Request) *templateDataAbout {
+	if td == nil {
+		td = &templateDataAbout{}
+	}
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.IsAuthenticated = app.isAuthenticated(r)
+	return td
+}
+
+
+// Render signup form
+func (app *application) renderAbout(w http.ResponseWriter, r *http.Request, name string, td *templateDataAbout) {
+	// retrieve based on page name or call serverError helper
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataAbout(td, r))
+	
+	// Remove session information
+	if app.session != nil {
+		app.session.Remove(r, "authenticatedPlayerID")
+		app.session.Remove(r, "boardID")
+		app.session.Remove(r, "battleID")
+		fmt.Println("Session information has been removed...")
+	}
+
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)}
+
 // ----------------------------------------------------------------------------
+// BATTLES
 
 // Add default data to create battle interface
 func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Request) *templateDataBattle {
 	if td == nil {
 		td = &templateDataBattle{}
 	}
-	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	// Default the boardID to 0
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	} else {
+		td.ActiveBoardID = 0
+	}
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
 	td.IsAuthenticated = app.isAuthenticated(r)
 	td.ScreenName = app.session.GetString(r, "screenName")
+	if td.ChallengerPositions != nil {
+		fmt.Println("Positions is not nil.  We should build MainGrid here...")
+		td.ChallengerGrid = app.preprocessBoardFromData(td.ChallengerPositions, "ro")
+	} else {
+		td.ChallengerGrid = app.preprocessBoardFromRequest(r)
+	}
+	if td.OpponentPositions != nil {
+		fmt.Println("Positions is not nil.  We should build MainGrid here...")
+		td.OpponentGrid = app.preprocessBoardFromData(td.OpponentPositions, "hidden")
+	} else {
+		td.OpponentGrid = app.preprocessBoardFromRequest(r)
+	}
 	return td
 }
+
+
 // renderBattle
 func (app *application) renderBattle(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattle) {
 	ts, ok := app.templateCache[name]
@@ -272,12 +295,21 @@ func (app *application) renderBattle(w http.ResponseWriter, r *http.Request, nam
 	}
 	buf.WriteTo(w)
 }
+
+
 // Add default data to create list of battles
 func (app *application) addDefaultDataBattles(td *templateDataBattles, r *http.Request) *templateDataBattles {
 	if td == nil {
 		td = &templateDataBattles{}
 	}
-	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	// Default the boardID to 0
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	} else {
+		td.ActiveBoardID = 0
+	}
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
@@ -285,6 +317,8 @@ func (app *application) addDefaultDataBattles(td *templateDataBattles, r *http.R
 	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
+
+
 // renderBattles
 func (app *application) renderBattles(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattles) {
 	ts, ok := app.templateCache[name]
@@ -303,7 +337,10 @@ func (app *application) renderBattles(w http.ResponseWriter, r *http.Request, na
 	}
 	buf.WriteTo(w)
 }
+
+
 // ----------------------------------------------------------------------------
+// BOARDS
 
 // Add default data to create board interface
 func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Request) *templateDataBoard {
@@ -312,11 +349,18 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	}
 	if td.Positions != nil {
 		fmt.Println("Positions is not nil.  We should build MainGrid here...")
-		td.MainGrid = app.preprocessBoardFromData(td.Positions)
+		td.MainGrid = app.preprocessBoardFromData(td.Positions, "ro")
 	} else {
 		td.MainGrid = app.preprocessBoardFromRequest(r)
 	}
-	td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	// Default the boardID to 0
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = app.session.GetInt(r, "boardID")
+	} else {
+		td.ActiveBoardID = 0
+	}
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
@@ -324,6 +368,8 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
+
+
 // Board
 func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoard) {
 	ts, ok := app.templateCache[name]
@@ -342,19 +388,22 @@ func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name
 	}
 	buf.WriteTo(w)
 }
+
+
 // Add default data to list of boards screens
 func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Request) *templateDataBoards {
 	if td == nil {
 		td = &templateDataBoards{}
 	}
-	boardID := app.session.GetInt(r, "boardID")
-	if boardID > 0 {
-		td.ActiveBoardID = boardID
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = activeBoardID
 	} else {
-		fmt.Println("boardID is empty:", boardID)
+		fmt.Println("boardID is empty:", activeBoardID)
 		td.ActiveBoardID = 0
 	}
-	td.AuthenticatedUserID = app.session.GetInt(r, "authenticatedUserID")
+	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
@@ -362,6 +411,8 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
+
+
 // renderBoards
 func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoards) {
 	ts, ok := app.templateCache[name]
@@ -380,7 +431,10 @@ func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, nam
 	}
 	buf.WriteTo(w)
 }
+
+
 // ----------------------------------------------------------------------------
+// STATUS
 
 // Confirm Status
 func (app *application) renderConfirmStatus(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattle) {
@@ -401,12 +455,20 @@ func (app *application) renderConfirmStatus(w http.ResponseWriter, r *http.Reque
 	buf.WriteTo(w)
 }
 
+
+// ----------------------------------------------------------------------------
+// JSON
+
 // Return JSON
 func (app *application) renderJson(w http.ResponseWriter, r *http.Request, out []byte) {
 	// Convert challengerID to string so we can add more strings later
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(out)
 }
+
+
+// ----------------------------------------------------------------------------
+// LOGIN
 
 // Login
 func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name string, td *templateDataLogin) {
@@ -424,7 +486,7 @@ func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name
 	
 	// Remove session information
 	if app.session != nil {
-		app.session.Remove(r, "authenticatedUserID")
+		app.session.Remove(r, "authenticatedPlayerID")
 		app.session.Remove(r, "boardID")
 		app.session.Remove(r, "battleID")
 		fmt.Println("Session information has been removed...")
@@ -436,9 +498,24 @@ func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name
 	}
 	buf.WriteTo(w)
 }
-// ----------------------------------------------------------------------------
 
-// Player
+
+// ----------------------------------------------------------------------------
+// PLAYER
+
+// Add default data to player info screens
+func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Request) *templateDataPlayer {
+	if td == nil {
+		td = &templateDataPlayer{}
+	}
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
+	return td
+}
+
 func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayer) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -446,7 +523,20 @@ func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, nam
 		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
 		return
 	}
-
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = activeBoardID
+	} else {
+		fmt.Println("boardID is empty:", activeBoardID)
+		td.ActiveBoardID = 0
+	}
+	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
@@ -458,7 +548,20 @@ func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, nam
 	buf.WriteTo(w)
 }
 
-// Players
+
+// Add default data to player info screens
+func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.Request) *templateDataPlayers {
+	if td == nil {
+		td = &templateDataPlayers{}
+	}
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
+	return td
+}
+
 func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, name string, td *templateDataPlayers) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -466,7 +569,20 @@ func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, na
 		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
 		return
 	}
-
+	activeBoardID := app.session.GetInt(r, "boardID")
+	if activeBoardID > 0 {
+		fmt.Println("activeBoardID = ", activeBoardID)
+		td.ActiveBoardID = activeBoardID
+	} else {
+		fmt.Println("boardID is empty:", activeBoardID)
+		td.ActiveBoardID = 0
+	}
+	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.Flash = app.session.PopString(r, "flash")
+	td.IsAuthenticated = app.isAuthenticated(r)
+	td.ScreenName = app.session.GetString(r, "screenName")
 	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
@@ -477,9 +593,22 @@ func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, na
 	}
 	buf.WriteTo(w)
 }
-// ----------------------------------------------------------------------------
 
-// Signup
+// ----------------------------------------------------------------------------
+// SIGNUP
+
+// Add default data to signup screens
+func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Request) *templateDataSignup {
+	if td == nil {
+		td = &templateDataSignup{}
+	}
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.IsAuthenticated = app.isAuthenticated(r)
+	return td
+}
+
+// Render signup form
 func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, name string, td *templateDataSignup) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -490,7 +619,6 @@ func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, nam
 	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
-	fmt.Println("error")
 	err := ts.Execute(buf, app.addDefaultDataSignup(td, r))
 	if err != nil {
 		app.serverError(w, err)
@@ -498,9 +626,10 @@ func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, nam
 	}
 	buf.WriteTo(w)
 }
+
+
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// Error handling
+// ERROR HANDLING
 
 // The serverError helper writes an error message and stack trace to the errorLog
 //  - Sends a generic 500 Internal Server Error response to the user

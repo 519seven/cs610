@@ -23,19 +23,28 @@ func (app *application) routes() http.Handler {
 
 	// Basics - home and about
 	mux.Get("/", dynamicMiddleware.ThenFunc(app.home))
-	//mux.Get("/about", dynamicMiddleware.ThenFunc(app.about))
+	mux.Get("/about", dynamicMiddleware.ThenFunc(app.about))
 
 	// BATTLES
-	// see if there are any challenges out there
+	// display list of battles
 	mux.Get("/status/battles/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBattles))
+	// see if there are any challenges out there
+	mux.Get("/status/challenge", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBattles))
 	// "accept" a challenge from another player
 	mux.Post("/status/confirm/:battleID", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.confirmStatus))
+	// get list of strikes to see if anything has changed
+	mux.Get("/status/strikes/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.getStrikes))
 	// accept a challenge and redirect to /battle/view
 	mux.Post("/battle/accept", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.acceptBattle))
 	// access a battlefield and continue battling - the battleID will be sent in form post
-	mux.Post("/battle/get", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.getBattle))
+	mux.Post("/battle/get/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.getBattle))
 	// view a non-playable version of a battle - the battleID will be sent in form post
+	mux.Post("/battle/view/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.viewBattle))
 	mux.Get("/battle/view/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.viewBattle))
+	// Enter the battle (shows board with selections that the users can click on)
+	mux.Post("/battle/enter/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.enterBattle))
+	mux.Post("/battle/strike", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.recordStrike))
+
 	/*
 	mux.HandleFunc("/battle/create", app.createBattle)
 	mux.HandleFunc("/battle/list", app.listBattle)

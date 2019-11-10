@@ -1,0 +1,82 @@
+{{template "base" .}}
+
+{{define "title"}}View Board{{end}}
+{{define "main"}}
+    <div>
+        <label>Welcome to The Battle of {{.Battle.Title}}</label>
+        <table border=1>
+            <tr><td>Your Board</td><tr>
+            <tr>
+                <td>
+                    {{.ChallengerGrid}}
+                </td>
+            </tr>
+            <tr><td>Your Opponent's Board</td><tr>
+            <tr>
+                <td>
+                    <form id='opponentBoard'>
+                        {{.OpponentGrid}}
+                    </form>
+                </td>
+            </tr>
+        </table>
+    </div>
+	<script type='text/javascript'>
+	$(document).ready(function() { 
+		$(':checkbox').change(function(){
+            var frm = $('#opponentBoard');
+            var csrf = {{.CSRFToken}};
+            var battleID = {{.Battle.ID}};
+            var dataString = 'csrf_token='+csrf+'&battleID='+battleID+'&coordinate='+this.name;
+            alert(dataString);
+            coordX = this.name.slice(6, this.name.length-1)
+            coordY = this.name.slice(this.name.length-1)
+            if (confirm('Send strike to '+coordX+' '+coordY+'?')) {
+                $.ajax({
+                    type: 'POST',
+                    url: '/battle/strike',
+                    data: dataString,
+                    success: function() {
+                        alert('Strike launched!');
+                    },
+                    error: function(request,error) {
+                        alert('Error!');
+                    }
+                });
+            }else{ 
+                alert("Aborting strike!"); 
+                // Now, uncheck the box!
+                this.checked = false;
+            };
+		});
+	});
+	(function poll() {
+		var continuePolling = true;
+		var pageData;
+		setTimeout(function() {
+			$.ajax({
+				url: "/status/strikes/{{.Battle.ID}}",
+				type: "GET",
+				success: function(data) {
+					//jsonData = JSON.parse(data);					// don't need to parse, it's already json
+					console.log("a challenger awaits you");
+					continuePolling = false;
+					if (confirm('Would you like to view your new challenge?')) {
+						alert('Taking you to '+data.redirect);
+						$(location).attr('href', data.redirect);	// if attr doesn't work, use val
+					}else{
+						alert('Turning off polling for this visit.\nVisit '+data.redirect+' to view your challenge(s).');
+						alert('Next, made a menu item appear for users to click to see their challenges');
+					};
+				},
+				error: function(request,error) {
+					console.log("no change")
+				},
+				dataType: "json",
+				complete: function() { if (continuePolling) { poll(); }},
+				timeout: 2000
+			})
+		}, 5000);
+	})();
+	</script>
+{{end}}

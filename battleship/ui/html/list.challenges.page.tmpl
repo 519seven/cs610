@@ -17,12 +17,19 @@
 			</tr>
 			{{range .}}
 			<tr>
-				<td><input type=radio name=battleID value="{{.ID}}"></td>
+				<td>
+					{{if ne false .Player2Accepted}}
+						<form name=accept{{.ID}} action='/battle/view/{{.ID}}' method=POST>
+							<input type='hidden' name='csrf_token' value='{{$.CSRFToken}}'>
+							<input type=radio name=battleID value="{{.ID}}" onclick="this.form.submit()">
+						</form>
+					{{end}}
+				</td>
 				<td>{{.Player1ScreenName}}</td>
 				<td>{{.Player2ScreenName}}</td>
 				<td>
-					{{if eq false .Player2Accepted}}
-						{{if eq .Player2ID .AuthenticatedUserID}}
+					{{if and (ne $.ActiveBoardID 0) (eq false .Player2Accepted)}}
+						{{if eq .Player2ID .AuthenticatedPlayerID}}
 							<form name=accept{{.ID}} action='/battle/accept' method=POST>
 								<input type='hidden' name='csrf_token' value='{{$.CSRFToken}}'>
 								<input type='button' name='player2Accepted' value='Accept' onclick="this.form.submit();">
@@ -31,11 +38,13 @@
 						{{else}}
 							Not yet :(
 						{{end}}
+					{{else if eq false .Player2Accepted}}
+						<a href="/board/list">Select board first</a>
 					{{else}}
 						Accepted
 					{{end}}
 				</td>
-				<td><a href="/board/{{.ID}}">{{.BoardTitle}}</a></td>
+				<td><a href="/board/{{.ID}}">{{.Title}}</a></td>
 				<td>{{if not .Turn}}Yes{{else}}No{{end}}</td>
 				<td>In progress|Win|Loss</td>
 			</tr>
