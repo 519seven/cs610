@@ -13,6 +13,10 @@ var (
 	ErrDuplicateEmail = errors.New("models: duplicate email")
 )
 
+type About struct {
+	AuthenticatedUserID		int
+	ScreenName				string
+}
 type Battle struct {
 	ID        				int
 	AuthenticatedPlayerID	int

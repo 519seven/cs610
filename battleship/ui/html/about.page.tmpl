@@ -1,15 +1,24 @@
 {{template "base" .}}
 
-{{define "title"}}Home{{end}}
+{{define "title"}}About{{end}}
 
 {{define "main"}}
-	<h1>About</h1>
-	<p>
-	  To play, first create a board. You will be able to view this board in your board list. In the board list, select your board.
-	</p>
-	<p>
-	  To challenge, after you have selected your board, click on the player list and choose your player. You will be taken to 
-	  the battle board where you will see your board on the left and a board on the right representing theirs. Click on a pin 
-	  location to ask your challenger if there is a ship there.
-	</p>
+	<h2>
+		The significance of Battleship
+	</h2>
+	<div>
+		The game of Battleship was a favorite of mine growing up. It is meant for two players and neither player can see the others’ board. The game is played on a board that is 10 columns (A-J) and 10 rows (0-9). The players place five naval ships on their boards in a horizontal or vertical orientation.  Players then take turns to try to hit the other player’s ship by calling out coordinates on the board.  If there is a part of the ship in those coordinates, it’s a “hit” and a red-colored pin is placed in that location on the board.  If there isn’t a “hit”, a gray-colored pin is placed in that location on the board.
+	</div>
+	<div>
+		For this project, there will be a server and a client component (your web browser, with accompanying HTTP endpoints accessible via curl, if you so desire). Users will be expected to log in. If they already have a game going, they can continue where they left off or create a new game.
+	</div>
+	<div>&nbsp;</div>
+
+	<h2>Game Play</h2>
+	<div>
+		To play, first sign up and log in. Then, create a board. You will be able to view this board in your board list. In the board list, select your board.
+	</div>
+	<div>
+		To challenge, after you have selected your board, click on the player list and choose your player. You will be taken to the battle board where you will see your board on the left and a board on the right representing theirs. Click on a pin location to ask your challenger if there is a ship there.
+	</div>
 {{end}}

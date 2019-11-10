@@ -11,6 +11,15 @@ import (
 
 // These structs are used to pass more data to the template
 
+// About (if the user is logged in, the about page can use this information)
+type templateDataAbout struct {
+	ActiveBoardID			int
+	CSRFToken				string
+	CurrentYear 			int
+	Flash					string
+	IsAuthenticated			bool
+	ScreenName				string
+}
 // Battle (the battle containing two boards)
 type templateDataBattle struct {
 	ActiveBoardID			int

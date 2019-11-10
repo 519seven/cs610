@@ -1,5 +1,14 @@
 package main
 
+// ----------------------------------------------------------------------------
+// Copyright 2019 Peter J. Akey
+// helpers.go
+//
+// Two pieces to every part
+// - Template data helpers helps us add items that can be accessed within HTML
+// - Page/template rendering
+// ----------------------------------------------------------------------------
+
 import (
 	"bytes"
 	"database/sql"
@@ -17,9 +26,10 @@ import (
 	"github.com/519seven/cs610/battleship/pkg/models"
 )
 
-/* ------------------------------------------------------------------------- */
-// database
+// ----------------------------------------------------------------------------
+// DATABASE
 
+// Initialize the database - create tables, pupulate ship types
 func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	// Do we need to remove the existing file before we begin?
 	if initdb == true {
@@ -71,43 +81,8 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	return db, nil
 }
 
-/* -------------------------------------------------------------------------- */
-// Method checking
-/*
-func checkMethod(m string, w http.ResponseWriter, r *http.Request) (http.ResponseWriter, bool) {
-	if m == "POST" {
-		// restrict this handler to HTTP POST methods only
-		if r.Method != http.MethodPost {
-			// Change response header map before WriteHeader or Write
-			w.Header().Set("Allow", http.MethodPost)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			// WriteHeader must be called explicity before any call to Write
-			//w.WriteHeader(405)
-			//w.Write([]byte("Method Not Allowed\r\n"))
-			// http.Error handles both WriteHeader and Write
-			return w, false
-		}
-		return w, true
-	} else if m == "GET" {
-		// restrict this handler to HTTP POST methods only
-		if r.Method != http.MethodGet {
-			// Change response header map before WriteHeader or Write
-			w.Header().Set("Allow", http.MethodGet)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			// WriteHeader must be called explicity before any call to Write
-			//w.WriteHeader(405)
-			//w.Write([]byte("Method Not Allowed\r\n"))
-			// http.Error handles both WriteHeader and Write
-			return w, false
-		}
-		return w, true
-	}
-	return w, true
-}
-*/
-
 // -----------------------------------------------------------------------------
-// General
+// GENERAL HELPERS
 
 // Clean form data
 func cleanCoordinates(coordinates string) string {
@@ -116,10 +91,12 @@ func cleanCoordinates(coordinates string) string {
 	return strings.Replace(cleanString, " ", "", -1)
 }
 
+
 // Check relationship between current user and a resource
 func (app *application) checkRelationship(resourceID int) bool {
 	return true
 }
+
 
 // For Authorization
 func (app *application) isAuthenticated(r *http.Request) bool {
@@ -132,11 +109,12 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 	return isAuthenticated
 }
 
-// Pre-processing HTML/template data
-// - Draw the board and pass in the HTML
+
+// Pre-processing HTML/template data based on data from database
 func (app *application) preprocessBoardFromData(p []*models.Positions, permissions string) template.HTML {
 	var fieldValue string; fieldValue = ""
 	var checked string; checked = ""
+	var onclick string; onclick = ""
 
 	gameBoard := "<table><th>&nbsp;</th>"
 	for _, col := range "ABCDEFGHIJ" {
@@ -157,8 +135,10 @@ func (app *application) preprocessBoardFromData(p []*models.Positions, permissio
 				}
 				if onePosition.PinColor != 0 {
 					checked = "CHECKED"
+					onclick = "return false;"
 				} else {
 					checked = ""
+					onclick = ""
 				}
 			}
 			if permissions == "ro" {
@@ -171,8 +151,8 @@ func (app *application) preprocessBoardFromData(p []*models.Positions, permissio
 					row, string(col), fieldValue)
 			} else if permissions == "hidden" {
 				gameBoard += "<td>"
-				gameBoard += fmt.Sprintf("<input type='checkbox' name=\"shipXY%d%s\" %s></td>", 
-					row, string(col), checked)
+				gameBoard += fmt.Sprintf("<input type='checkbox' name=\"shipXY%d%s\" %s %s></td>", 
+					row, string(col), checked, onclick)
 			}
 		}
 		gameBoard += "</tr>"
@@ -180,6 +160,9 @@ func (app *application) preprocessBoardFromData(p []*models.Positions, permissio
 	gameBoard += "</table>"
 	return template.HTML(gameBoard)
 }
+
+
+// Pre-processing HTML/template data based on data found in the form request
 func (app *application) preprocessBoardFromRequest(r *http.Request) template.HTML {
 	gameBoard := "<table><th>&nbsp;</th>"
 	for _, col := range "ABCDEFGHIJ" {
@@ -199,10 +182,6 @@ func (app *application) preprocessBoardFromRequest(r *http.Request) template.HTM
 	return template.HTML(gameBoard)
 }
 
-// ----------------------------------------------------------------------------
-// Create template data helpers so we can add items.  This information is 
-// automatically available each time we render a template
-// ----------------------------------------------------------------------------
 
 // Add default data to login screens
 func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Request) *templateDataLogin {
@@ -217,10 +196,14 @@ func (app *application) addDefaultDataLogin(td *templateDataLogin, r *http.Reque
 	return td
 }
 
-// Add default data to signup screens
-func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Request) *templateDataSignup {
+
+// ----------------------------------------------------------------------------
+// ABOUT
+
+// Add default data to create about template
+func (app *application) addDefaultDataAbout(td *templateDataAbout, r *http.Request) *templateDataAbout {
 	if td == nil {
-		td = &templateDataSignup{}
+		td = &templateDataAbout{}
 	}
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
@@ -228,8 +211,37 @@ func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Req
 	return td
 }
 
+
+// Render signup form
+func (app *application) renderAbout(w http.ResponseWriter, r *http.Request, name string, td *templateDataAbout) {
+	// retrieve based on page name or call serverError helper
+	ts, ok := app.templateCache[name]
+	if !ok {
+		app.serverError(w, fmt.Errorf("The template %s does not exist", name))
+		return
+	}
+
+	// write to buffer first to catch errors that may occur
+	buf := new(bytes.Buffer)
+	// execute template set, passing the dynamic data with the copyright year
+	err := ts.Execute(buf, app.addDefaultDataAbout(td, r))
+	
+	// Remove session information
+	if app.session != nil {
+		app.session.Remove(r, "authenticatedPlayerID")
+		app.session.Remove(r, "boardID")
+		app.session.Remove(r, "battleID")
+		fmt.Println("Session information has been removed...")
+	}
+
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	buf.WriteTo(w)}
+
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
+// BATTLES
 
 // Add default data to create battle interface
 func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Request) *templateDataBattle {
@@ -263,6 +275,8 @@ func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Req
 	}
 	return td
 }
+
+
 // renderBattle
 func (app *application) renderBattle(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattle) {
 	ts, ok := app.templateCache[name]
@@ -281,6 +295,8 @@ func (app *application) renderBattle(w http.ResponseWriter, r *http.Request, nam
 	}
 	buf.WriteTo(w)
 }
+
+
 // Add default data to create list of battles
 func (app *application) addDefaultDataBattles(td *templateDataBattles, r *http.Request) *templateDataBattles {
 	if td == nil {
@@ -301,6 +317,8 @@ func (app *application) addDefaultDataBattles(td *templateDataBattles, r *http.R
 	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
+
+
 // renderBattles
 func (app *application) renderBattles(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattles) {
 	ts, ok := app.templateCache[name]
@@ -319,7 +337,10 @@ func (app *application) renderBattles(w http.ResponseWriter, r *http.Request, na
 	}
 	buf.WriteTo(w)
 }
+
+
 // ----------------------------------------------------------------------------
+// BOARDS
 
 // Add default data to create board interface
 func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Request) *templateDataBoard {
@@ -347,6 +368,8 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
+
+
 // Board
 func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoard) {
 	ts, ok := app.templateCache[name]
@@ -365,6 +388,8 @@ func (app *application) renderBoard(w http.ResponseWriter, r *http.Request, name
 	}
 	buf.WriteTo(w)
 }
+
+
 // Add default data to list of boards screens
 func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Request) *templateDataBoards {
 	if td == nil {
@@ -386,6 +411,8 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	td.ScreenName = app.session.GetString(r, "screenName")
 	return td
 }
+
+
 // renderBoards
 func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, name string, td *templateDataBoards) {
 	ts, ok := app.templateCache[name]
@@ -404,7 +431,10 @@ func (app *application) renderBoards(w http.ResponseWriter, r *http.Request, nam
 	}
 	buf.WriteTo(w)
 }
+
+
 // ----------------------------------------------------------------------------
+// STATUS
 
 // Confirm Status
 func (app *application) renderConfirmStatus(w http.ResponseWriter, r *http.Request, name string, td *templateDataBattle) {
@@ -425,12 +455,20 @@ func (app *application) renderConfirmStatus(w http.ResponseWriter, r *http.Reque
 	buf.WriteTo(w)
 }
 
+
+// ----------------------------------------------------------------------------
+// JSON
+
 // Return JSON
 func (app *application) renderJson(w http.ResponseWriter, r *http.Request, out []byte) {
 	// Convert challengerID to string so we can add more strings later
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(out)
 }
+
+
+// ----------------------------------------------------------------------------
+// LOGIN
 
 // Login
 func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name string, td *templateDataLogin) {
@@ -460,9 +498,11 @@ func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name
 	}
 	buf.WriteTo(w)
 }
-// ----------------------------------------------------------------------------
 
-// Player
+
+// ----------------------------------------------------------------------------
+// PLAYER
+
 // Add default data to player info screens
 func (app *application) addDefaultDataPlayer(td *templateDataPlayer, r *http.Request) *templateDataPlayer {
 	if td == nil {
@@ -508,7 +548,7 @@ func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, nam
 	buf.WriteTo(w)
 }
 
-// Players
+
 // Add default data to player info screens
 func (app *application) addDefaultDataPlayers(td *templateDataPlayers, r *http.Request) *templateDataPlayers {
 	if td == nil {
@@ -553,9 +593,22 @@ func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, na
 	}
 	buf.WriteTo(w)
 }
-// ----------------------------------------------------------------------------
 
-// Signup
+// ----------------------------------------------------------------------------
+// SIGNUP
+
+// Add default data to signup screens
+func (app *application) addDefaultDataSignup(td *templateDataSignup, r *http.Request) *templateDataSignup {
+	if td == nil {
+		td = &templateDataSignup{}
+	}
+	td.CSRFToken = nosurf.Token(r)
+	td.CurrentYear = time.Now().Year()
+	td.IsAuthenticated = app.isAuthenticated(r)
+	return td
+}
+
+// Render signup form
 func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, name string, td *templateDataSignup) {
 	// retrieve based on page name or call serverError helper
 	ts, ok := app.templateCache[name]
@@ -566,7 +619,6 @@ func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, nam
 	// write to buffer first to catch errors that may occur
 	buf := new(bytes.Buffer)
 	// execute template set, passing the dynamic data with the copyright year
-	fmt.Println("error")
 	err := ts.Execute(buf, app.addDefaultDataSignup(td, r))
 	if err != nil {
 		app.serverError(w, err)
@@ -574,9 +626,10 @@ func (app *application) renderSignup(w http.ResponseWriter, r *http.Request, nam
 	}
 	buf.WriteTo(w)
 }
+
+
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// Error handling
+// ERROR HANDLING
 
 // The serverError helper writes an error message and stack trace to the errorLog
 //  - Sends a generic 500 Internal Server Error response to the user

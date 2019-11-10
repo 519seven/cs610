@@ -40,7 +40,7 @@
 		var pageData;
 		setTimeout(function() {
 			$.ajax({
-				url: "/status/battles",
+				url: "/status/challenge",
 				type: "GET",
 				success: function(data) {
 					//jsonData = JSON.parse(data);					// don't need to parse, it's already json
@@ -55,7 +55,7 @@
 					};
 				},
 				error: function(request,error) {
-					console.log("error")
+					console.log("no change")
 				},
 				dataType: "json",
 				complete: function() { if (continuePolling) { poll(); }},

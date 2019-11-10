@@ -1,5 +1,7 @@
 package main
 
+// The handlers are the functions that the application routes will use to field a request
+
 import (
 	"bytes"
 	"encoding/json"
@@ -19,19 +21,18 @@ import (
 // BEGIN AUTH
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
 // Log-In
 // ----------------------------------------------------------------------------
 
-// Begin loginForm
+// Display login using a new form
 func (app *application) loginForm(w http.ResponseWriter, r *http.Request) {
 	app.renderLogin(w, r, "login.page.tmpl", &templateDataLogin {
-		Form: forms.New(nil),
+		Form: 			forms.New(nil),
 	})
 }
-// End loginForm
 
-// Begin postLogin
+
+// Check login request to see if user can be authenticated
 func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -59,9 +60,9 @@ func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 	app.session.Put(r, "screenName", form.Get("screenName"))
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
-// End postLogin
 
-// Begin postLogout
+
+// Handle logout request; remove authenticatedPlayerID from session object
 func (app *application) postLogout(w http.ResponseWriter, r *http.Request) {
 	// "log out" the user by removing their ID from the session
 	rowid := app.session.PopInt(r, "authenticatedPlayerID")
@@ -69,7 +70,7 @@ func (app *application) postLogout(w http.ResponseWriter, r *http.Request) {
 	app.session.Put(r, "flash", "You've been logged out successfully")
 	http.Redirect(w, r, "/login", 303)
 }
-// End postLogout
+
 
 // ----------------------------------------------------------------------------
 // Sign-Up
@@ -81,10 +82,9 @@ func (app *application) getSignupForm(w http.ResponseWriter, r *http.Request) {
 		Form: forms.New(nil),
 	})
 }
-// End getSignupForm
+
 
 // Create a new player - submit signup form (POST)
-// Begin postSignup
 func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 	// Create a new forms.Form struct containing the POSTed data from the
 	//  form, then use the validation methods to check the content.
@@ -130,18 +130,15 @@ func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 	app.session.Remove(r, "authenticatedPlayerID")
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
-// End postSignup
+
 
 // END AUTH
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
 
-// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 // BEGIN HOME
 
-// Home
-// - A method against *application
+// Display / (home) page
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	// write board data
 	files := []string{
@@ -167,42 +164,19 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 // END HOME
 // ----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
 
-// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 // BEGIN ABOUT
 
-// ABOUT
-// - A method against *application
+// Display the "about" page
 func (app *application) about(w http.ResponseWriter, r *http.Request) {
-	// write board data
-	files := []string{
-		"./ui/html/about.page.tmpl",
-		"./ui/html/base.layout.tmpl",
-		"./ui/html/footer.partial.tmpl",
-	}
-	// render template
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	// to catch template errors, write to buffer first
-	buf := new(bytes.Buffer)
-	err = ts.Execute(buf, nil)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	buf.WriteTo(w)
+
+	app.renderAbout(w, r, "about.page.tmpl", &templateDataAbout{})
 }
 
 // END ABOUT
 // ----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
 
-// ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // BEGIN BATTLES
 
@@ -225,6 +199,7 @@ func (app *application) acceptBattle(w http.ResponseWriter, r *http.Request) {
 	app.session.Put(r, "flash", "You have accepted the battle!")
 	http.Redirect(w, r, fmt.Sprintf("/battle/view/%d", battleID), http.StatusSeeOther)
 }
+
 
 // Enter battle
 func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
@@ -252,7 +227,8 @@ func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 	bOne := int(b.Player1BoardID)
 	bTwo := int(b.Player2BoardID)
 	if playerID == bTwo {
-		// This authenticated player is the opponent (Player2); swap these values
+		// This authenticated player is the opponent (Player2)
+		// Swap these values
 		holder := bOne
 		challenger = bTwo
 		opponent = holder
@@ -260,6 +236,7 @@ func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 		challenger = bOne
 		opponent = bTwo
 	}
+
 	// Get postitions for Player1's ships (by boardID)
 	c, err := app.boards.GetPositions(challenger)
 	if err != nil {
@@ -292,10 +269,13 @@ func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+
 // Get battle
 func (app *application) getBattle(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Still to be done - The battlefield, which will have two boards and an active battle..."))
 }
+
+
 // List battles
 func (app *application) listBattles(w http.ResponseWriter, r *http.Request) {
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
@@ -315,6 +295,8 @@ func (app *application) listBattles(w http.ResponseWriter, r *http.Request) {
 		Battles: 			b,
 	})
 }
+
+
 // View battle
 func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 	var challenger int; challenger = 0
@@ -381,13 +363,11 @@ func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 
 // END BATTLES
 // ----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
 
-// ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // BEGIN BOARDS
 
-// Create a new board
+// Create a new game board
 func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	// POST /create/board
@@ -524,13 +504,14 @@ func (app *application) createBoard(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
 
-// Form handler
+
+// Display new form for creating a game board
 func (app *application) createBoardForm(w http.ResponseWriter, r *http.Request) {
-	// GET /create/board
 	app.renderBoard(w, r, "create.board.page.tmpl", &templateDataBoard {
 		Form: 				forms.New(nil),
 	})
 }
+
 
 // Display board - the way it would appear in a 10x10 grid
 func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
@@ -565,9 +546,9 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+
 // List boards
 func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
-	// the playerID should be in a session somewhere
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	boardID := app.session.GetInt(r, "boardID")
 	app.infoLog.Println("boardID immediately after setting is:", boardID)
@@ -586,7 +567,8 @@ func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Select
+
+// Select a board; needed before challenging an opponent to a battle
 func (app *application) selectBoard(w http.ResponseWriter, r*http.Request) {
 	form := forms.New(r.PostForm)
 	boardID, err := strconv.Atoi(form.Get("boardID"))
@@ -602,7 +584,8 @@ func (app *application) selectBoard(w http.ResponseWriter, r*http.Request) {
 	http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 }
 
-// Update
+
+// Update board information
 func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	boardName := r.URL.Query().Get("boardName")
@@ -619,39 +602,39 @@ func (app *application) updateBoard(w http.ResponseWriter, r *http.Request) {
 
 // END BOARDS
 // ----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // BEGIN PLAYERS
 
 // Challenge a Player
 func (app *application) challengePlayer(w http.ResponseWriter, r *http.Request) {
-	// - The user that challenges is the challenger (player1)
-	// - The user that is being challenged is the challengee (player2)
+	player1ID := 0
+	player2ID := 0
+
+	// Player1 is the challenger; Player2 is the opponent
 	err := r.ParseForm()
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
+
 	// Player1 information is retrieved from session object
-	player1ID := app.session.GetInt(r, "authenticatedPlayerID")
+	player1ID = app.session.GetInt(r, "authenticatedPlayerID")
 	player1BoardID := app.session.GetInt(r, "boardID")
 	app.infoLog.Println("Player1 boardID is", player1BoardID)
 	if player1BoardID < 1 {
 		app.session.Put(r, "flash", "You must select your board first, then issue a challenge!")
 		http.Redirect(w, r, "/board/list", http.StatusSeeOther)
 	}
+
 	// Player2 information is retrieved from form
-	player2ID := 0
 	form := forms.New(r.PostForm)
-	playerID := form.Get("playerID")
-	if playerID == "" {
+	if form.Get("playerID") == "" {
 		//app.serverError(w, )
-		app.infoLog.Println("player2ID is empty")
+		app.infoLog.Println("playerID (from players list) is empty")
 		return
 	} else {
-		player2ID, err = strconv.Atoi(playerID)
+		player2ID, err = strconv.Atoi(form.Get("playerID"))
 		if err != nil {
 			app.infoLog.Println("player2ID is empty")
 			return
@@ -665,10 +648,11 @@ func (app *application) challengePlayer(w http.ResponseWriter, r *http.Request) 
 	// This "update" now happens in "Create" - not ideal!
 	//app.battles.UpdateChallenge(player1ID, player2ID, false, battleID)
 
-	// If things are successful, return user to player list
+	// Return user to player list where the flash message is displayed
 	app.session.Put(r, "flash", "Challenge created!  Awaiting player's response.")
 	http.Redirect(w, r, "/player/list", http.StatusSeeOther)
 }
+
 
 // Find out if there are any challenges for the user
 func (app *application) challengeStatus(w http.ResponseWriter, r *http.Request) {
@@ -703,6 +687,8 @@ func (app *application) challengeStatus(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+
+// Accept a challenge from another player
 func (app *application) confirmStatus(w http.ResponseWriter, r *http.Request) {
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	b, err := app.battles.GetOpen(playerID, 0)
@@ -718,6 +704,7 @@ func (app *application) confirmStatus(w http.ResponseWriter, r *http.Request) {
 		Battles: 			b,
 	})
 }
+
 
 // Display player
 func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
@@ -740,7 +727,8 @@ func (app *application) displayPlayer(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// List players
+
+// Display a list of players
 func (app *application) listPlayers(w http.ResponseWriter, r *http.Request) {
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	p, err := app.players.List(playerID, "loggedIn")
@@ -757,6 +745,7 @@ func (app *application) listPlayers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+
 // Update player
 func (app *application) updatePlayer(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
@@ -772,27 +761,29 @@ func (app *application) updatePlayer(w http.ResponseWriter, r *http.Request) {
 
 // END PLAYERS
 // ----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // BEGIN POSITIONS
 
 // Update a position's pinColor
 func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
-	boardID, err := strconv.Atoi(r.URL.Query().Get("boardID"))	// get from session?
+	battleID, err := strconv.Atoi(r.URL.Query().Get("battleID"))
 	if err != nil {
 		app.serverError(w, err)
 	}
-	shipXY := r.URL.Query().Get("shipXY")						// get from board form
-	playerID := 1												// get from session??
-	coordX, err := strconv.Atoi(shipXY[len(shipXY)-2:])			// get the second-to-last character
+	boardID, err := strconv.Atoi(r.URL.Query().Get("boardID"))
 	if err != nil {
 		app.serverError(w, err)
 	}
-	coordY := shipXY[len(shipXY)-1:]							// get the last character
-	pinColor := 1												// if it's 1 then 0; if it's 0 then 1
-	rowid, err := app.positions.Update(boardID, playerID, coordX, coordY, pinColor)
+	playerID := app.session.GetInt(r, "authenticatedPlayerID")
+
+	shipXY := r.URL.Query().Get("shipXY")
+	coordX, err := strconv.Atoi(shipXY[len(shipXY)-2:])				// get the second-to-last character (!!!BUG!!!)
+	if err != nil {
+		app.serverError(w, err)
+	}
+	coordY := shipXY[len(shipXY)-1:]								// get the last character
+	rowid, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -802,5 +793,82 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 }
 
 // END POSITIONS
+// ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// BEGIN STRIKE
+
+// Return json containing a list of strikes to caller
+func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
+	playerID, err := strconv.Atoi(r.URL.Query().Get(":id"))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	challengerID, err := app.battles.GetChallenger(playerID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	if challengerID > 0 {
+		type JsonResponse struct {
+			Status 			string 		`json:"status"`
+			NextPage		string		`json:"redirect"`
+			Time			time.Time	`json:"timestamp"`
+		}
+		redirect := "/status/battles/list"
+		var JR JsonResponse
+		JR.Status = "challenge"
+		JR.NextPage = redirect
+		JR.Time = time.Now()
+
+		out, err := json.Marshal(JR)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		app.renderJson(w, r, out)
+	} else {
+		// do nothing
+		return
+	}
+}
+
+
+// When a player launches a strike, see if it is a hit (make pinColor=1) and record strike
+func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("form fields:", r.URL.Query())
+	battleID, err := strconv.Atoi(r.URL.Query().Get("battleID"))
+	if err != nil {
+		battleID = 0
+	}
+	boardID, err := strconv.Atoi(r.URL.Query().Get("boardID"))
+	if err != nil {
+		boardID = 0
+	}
+	playerID := app.session.GetInt(r, "authenticatedPlayerID")
+
+	// Get the X & Y coordinates
+	coordinate := r.URL.Query().Get("coordinate")
+	// Remove shipXY (6 chars)
+	coordinate = coordinate[6:]
+	// Assign the last character
+	coordY := coordinate[:1]
+	// Get everything but the last character (could be one or two chars)
+	coordX, err := strconv.Atoi(coordinate[len(coordinate)-1:])
+	if err != nil {
+		coordX = 0
+	}
+
+	// Make sure this player belongs to this battle
+	//checkBattle(playerID, battleID)
+	// Update the database with the new strike, update Turn to be the other player
+	_, err = app.positions.Update(playerID, battleID, boardID, coordX, coordY)
+	if err != nil {
+		app.infoLog.Println("Update failed for ", playerID, battleID, boardID, coordX, coordY)
+	}
+}
+
+// END STRIKE
 // ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
