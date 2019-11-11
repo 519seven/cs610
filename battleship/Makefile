@@ -39,7 +39,7 @@ build:
 		
 certs:
 		@set -e; ./gen_cert.sh && {												\
-			echo "Certs have been generated!";									\
+			echo "Certificates are in place! Next is build.";					\
 		 } || {																	\
 		 	echo "Cert we not generated. Check output."; 						\
 			exit 1;																\

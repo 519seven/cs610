@@ -3,47 +3,56 @@
 {{define "title"}}About{{end}}
 
 {{define "main"}}
-	<h2>
+	<h1>
 		The significance of Battleship
-	</h2>
+	</h1>
 	<div>
 		The game of Battleship was a favorite of mine growing up. It is meant for two players and neither player can see the others’ board. The game is played on a board that is 10 columns (A-J) and 10 rows (0-9). The players place five naval ships on their boards in a horizontal or vertical orientation.  Players then take turns to try to hit the other player’s ship by calling out coordinates on the board.  If there is a part of the ship in those coordinates, it’s a “hit” and a red-colored pin is placed in that location on the board.  If there isn’t a “hit”, a gray-colored pin is placed in that location on the board.
-	</div>
+	</div><br>
 	<div>
 		For this project, there will be a server and a client component (your web browser, with accompanying HTTP endpoints accessible via curl, if you so desire). Users will be expected to log in. If they already have a game going, they can continue where they left off or create a new game.
 	</div>
 	<div>&nbsp;</div>
 
-	<h2>Game Play</h2>
+	<h1>Game Play</h1>
 	<div>
 		To play, first sign up and log in. Then, create a board. You will be able to view this board in your board list. In the board list, select your board.
-	</div>
+	</div><br>
 	<div>
 		To challenge, after you have selected your board, click on the player list and choose your player. You will be taken to the battle board where you will see your board on the left and a board on the right representing theirs. Click on a pin location to ask your challenger if there is a ship there.
 	</div>
-	<h2>What is it about Go?</h2>
+	<div>&nbsp;</div>
+
+	<h1>Why Go?</h1>
 	<div>
-		I have chosen to write this project in GoLang.<br>
-		I am drawn to GoLang simply because I have been wanting to create something using it. If you're looking for a server/client solution, this may be one of the better languages out there for such a purpose.<br>
-		Don't get me wrong, I am intimidated by new languages, especially when being turned in for a grade. But, if I spend an intense semester with this language, I will probably know it nearly as well as any other language.<br>
-		I don’t write full-on projects in any language for my day-to-day. My days involve mostly context switching between management and fielding helpdesk-type requests.<br>
-		The other aspect of that is, “What language should I learn?” and right now, the industry with which I am familiar finds worth in engineers who can write in Go. The whole point of this education is to satisfy my urge to know the basics of this thing we call Computer Science, to become more aware of the implications behind decisions made based on best security practices, and to have better job security.<br>
-		I wish I could be doing all of this for the fun of it but I have to kill two birds with one stone where I can. There is great importance in learning a modern language that can provide a framework that supports security, flexibility, and performance.<br>
-		Before I started down this path, I had been eyeing several resources in Go to accomplish something similar. The most influential resource that I will be following is a book on writing HTTP applications in Go called Let’s Go by Alex Edwards. His tutorial will be guiding me towards making good decisions on how to lay my project out, how to implement basic security measures, and handle logging, routing, HTML templating, etc.<br>
-		Yes, I am leaning heavily on his guidance because of the reasons mentioned above but my project is my own. It is Battleship, the game, not the movie, and it will be mine and mine only, written in Go, following as many best practices as I can get my hands on. I am pulling in ideas from others about structuring my HTTP services but the game flow has been my creation from the beginning. I am also borrowing from other’s efforts by using sql and middleware libraries written by others and they will be indicated as such in my code base where appropriate.<br>
-		Lastly, the purpose behind making this a web app, and not only a command line application, is to be able to better understand the vulnerabilities associated with the DOM and other web-only technologies.<br>
+		I have chosen to write this project in GoLang.<br><br>
+		I am drawn to GoLang simply because I have been wanting to create something using it. If you're looking for a server/client solution, this may be one of the better languages out there for such a purpose.<br><br>
+		Don't get me wrong, I am intimidated by new languages, especially when being turned in for a grade. But, if I spend an intense semester with this language, I will probably know it nearly as well as any other language.<br><br>
+		I don’t write full-on projects in any language for my day-to-day. My days involve mostly context switching between management and fielding helpdesk-type requests.<br><br>
+		The other aspect of that is, “What language should I learn?” and right now, the industry with which I am familiar finds worth in engineers who can write in Go. The whole point of this education is to satisfy my urge to know the basics of this thing we call Computer Science, to become more aware of the implications behind decisions made based on best security practices, and to have better job security.<br><br>
+		I wish I could be doing all of this for the fun of it but I have to kill two birds with one stone where I can. There is great importance in learning a modern language that can provide a framework that supports security, flexibility, and performance.<br><br>
+		Before I started down this path, I had been eyeing several resources in Go to accomplish something similar. The most influential resource that I will be following is a book on writing HTTP applications in Go called Let’s Go by Alex Edwards. His tutorial will be guiding me towards making good decisions on how to lay my project out, how to implement basic security measures, and handle logging, routing, HTML templating, etc.<br><br>
+		Yes, I am leaning heavily on his guidance because of the reasons mentioned above but my project is my own. It is Battleship, the game, not the movie, and it will be mine and mine only, written in Go, following as many best practices as I can get my hands on. I am pulling in ideas from others about structuring my HTTP services but the game flow has been my creation from the beginning. I am also borrowing from other’s efforts by using sql and middleware libraries written by others and they will be indicated as such in my code base where appropriate.<br><br>
+		Lastly, the purpose behind making this a web app, and not only a command line application, is to be able to better understand the vulnerabilities associated with the DOM and other web-only technologies.<br><br>
 		Before I close, I wanted to say that hopefully I have understood the goal of this project and it is something that I can grow and extend with the aspirations of making a secure app. Security is not the only focus, however - there is a substantial amount of effort that needs to go into making the product and we haven’t been asked to take an existing project and apply security to it. We have been asked to design and build our own project so there is a substantial amount of effort required up front to get to a point where the project is useful. Security is a top priority, though.
 	</div>
-	<h2>Security Measures (Inspiration taken from Let's Go and <a href="https://cheatsheetseries.owasp.org/" target=_blank>OWASP's Cheat Sheets</a>)</h2>
+	<div>&nbsp;</div>
 	<div>
-		I have made it a point or will make it a point to address each item on OWASP's Cheat Sheet. Here are some that have been addressed on some level thus far:
-	</div>
-	<h1><a href="https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html">Preventing Clickjacking</a></h1>
+	<h1>
+		Security Measures
+	</h1><br>
+		"Inspiration" taken from Let's Go and <a href="https://cheatsheetseries.owasp.org/" target=_blank>OWASP's Cheat Sheets.</a> I have made it a point or will make it a point to address each item on OWASP's Cheat Sheet. Below are some that have been addressed on some level thus far.
+	</div><br>
 	<div>
+	<h2>
+		<a href="https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html">Preventing Clickjacking</a>
+	</h2>
 		Using the proper header(s), you can instruct the user's web browser to implement additional security measures to prevent Clickjacking.  The <code>X-Frame-Options</code> header ensures a web site's content is not embedded into other sites. This header should be present on all HTML pages.
-	</div>
-	<h1><a href="https://cheatsheetseries.owasp.org/cheatsheets/AJAX_Security_Cheat_Sheet.html">AJAX Security</a></h1>
+	</div><br>
 	<div>
+	<h2>
+		<a href="https://cheatsheetseries.owasp.org/cheatsheets/AJAX_Security_Cheat_Sheet.html">AJAX Security</a>
+	</h2>
 		Certain guidelines ought to followed when implementing an AJAX solution, such as:
 		<ol>
 		<li>Use .innerText instead of .innerHtml</li>
@@ -54,20 +63,35 @@
 		<li>Use CSRF Protection (see CSRF section)</li>
 		<li>Always return JSON with an Object on the outside</li>
 		</ol>
-	</div>
-	<h1><a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html">Cross-Site Request Forgery</a></h1>
+	</div><br>
 	<div>
+	<h2>
+		<a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html">Cross-Site Request Forgery</a>
+	</h2>
 		Cross-Site Request Forgery (CSRF) is a type of attack that occurs when a malicious web site, email, blog, instant message, or program causes a user's web browser to perform an unwanted action on a trusted site when the user is authenticated.  if the user is authenticated to the site, the site cannot distinguish between the forged or legitimate request sent by the victim.<br>
 		To prevent such unwanted actions, would need a token/identifier that is not accessible to attacker and would not be sent along (like cookies) with forged requests that attacker initiates.
-	</div>
-	<h1><a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html">Cross-Site Scripting</a></h1>
+	</div><br>
 	<div>
+	<h2>
+		<a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html">Cross-Site Scripting</a>
+	</h2>
 		It is imperative that no XSS vulnerabilities are present to ensure that CSRF defenses can't be circumvented.
-	</div>
-	<h1><a href="https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html">Authentication and Session Management</a></h1>
-	<h1><a href="https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html">Query Parameterization</a></h1>
-	<h1><a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html">SQL Injection Prevention</a></h1>
-	<h1><a href="https://cheatsheetseries.owasp.org/cheatsheets/TLS_Cipher_String_Cheat_Sheet.html">TLS Cipher String</a></h1>
-	<h1><a href="https://cheatsheetseries.owasp.org/cheatsheets/Denial_of_Service_Cheat_Sheet.html">Denial of Service</a></h1>
+	</div><br>
+	<div>
+	<h2>
+		<a href="https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html">Authentication and Session Management</a>
+	</h2>
+	<h2>
+		<a href="https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html">Query Parameterization</a>
+	</h2>
+	<h2>
+		<a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html">SQL Injection Prevention</a>
+	</h2>
+	<h2>
+		<a href="https://cheatsheetseries.owasp.org/cheatsheets/TLS_Cipher_String_Cheat_Sheet.html">TLS Cipher String</a>
+	</h2>
+	<h2>
+		<a href="https://cheatsheetseries.owasp.org/cheatsheets/Denial_of_Service_Cheat_Sheet.html">Denial of Service</a>
+	</h2>
 	
 {{end}}

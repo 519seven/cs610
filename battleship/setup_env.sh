@@ -29,19 +29,39 @@ function get_answer {
 function go_get_var {
   # Try to find and set our go vars
   printf "Checking for go1.13 (this may take several seconds)\n"
-  GO=$(find ~ -type f -name 'go1.13' -o -name 'go1.13.1' | grep bin | head -1)
-  GOBASE=$(basename $GO)
-  if ! $GO version 2>/dev/null; then
-    # go was found but it isn't installed
-    GO=""
+  GO=$(which go)
+  if [ $? -eq 0 ]; then
+    # Success
+    GOVER=$($GO version)
+    if [[ $GOVER == *"1.13"* ]]; then
+      # Found version 1.13
+      printf "$GOVER was found, able to continue...\n"
+      GOBASE=$(basename $GO 2>/dev/null)
+    else
+      # Look in user's home directory for the downloader 
+      GO=$(find ~ -type f -name 'go1.13' -o -name 'go1.13.1' | grep bin | head -1)
+      if [ $? -eq 0 ]; then
+        GOBASE=$(basename $GO 2>/dev/null)
+        if ! $GO version 2>/dev/null; then
+          # go was found but it isn't installed
+          GO=""
+        fi
+      else
+        printf "go is not version 1.13\n"
+        exit 1
+      fi
+    fi
+  else
+    printf "go was not found on your system. Please install version 1.13\n"
+    exit 1
   fi
 }
 
 function go_found {
   # Look for an existing go version
-  if [[ $GO == *"go1.13"* || $GO == *"go1.13.1"* ]]; then
+  if [[ $GO == *"go1.13"* || $GO == *"go1.13.1"* || $GOVER == *"1.13"* ]]; then
     save_env
-    printf "go version $GOBASE was found.  You're good to go :)\n"
+    printf "$GOVER was found.  You're good to go :)\n"
     printf "Passing control back to setup...\n"
     exit 0
   fi
@@ -81,7 +101,11 @@ function save_env {
 # -----------------------------------------------------------------------------
 
 go_get_var || { printf "Error in go_get_var. Exiting...\n"; exit 1; }
-go_found || { printf "Error in go_found. Exiting...\n"; exit 2; }
-go_save_vars || { printf "Error in go_save_vars. Exiting...\n"; exit 3; }
-go_get_var || { printf "Error in go_get_var. Exiting...\n"; exit 4; }
-go_get_go || { printf "Error in go_get_go. Exiting...\n"; exit 5; }
+if [[ $GOVER != *"1.13"* ]]; then
+  go_found || { printf "Error in go_found. Exiting...\n"; exit 2; }
+  go_save_vars || { printf "Error in go_save_vars. Exiting...\n"; exit 3; }
+  go_get_var || { printf "Error in go_get_var. Exiting...\n"; exit 4; }
+  go_get_go || { printf "Error in go_get_go. Exiting...\n"; exit 5; }
+else
+  printf "You have the correct go version\n"
+fi

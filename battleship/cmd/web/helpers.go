@@ -24,6 +24,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/justinas/nosurf"							 // csrf prevention
 	"github.com/519seven/cs610/battleship/pkg/models"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // ----------------------------------------------------------------------------
@@ -77,6 +78,13 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	stmt, _ = db.Prepare(`INSERT INTO Ships (shipType, shipLength) VALUES 
 		('carrier', 5), ('battleship', 4), ('cruiser', 3), ('submarine', 3), ('destroyer', 2)`)
 	stmt.Exec()
+	// sample accounts
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("B0mbs4way:("), 13)
+	elvisPassword, err := bcrypt.GenerateFromPassword([]byte("P34nutButter76"), 13)
+	stmt, _ = db.Prepare(`INSERT INTO Players (screenName, emailAddress, hashedPassword) VALUES
+		('bob', 'bob@bob.com', ?), ('sue', 'sue@sue.com', ?), 
+		('elvis', 'elvis@graceland.com', ?), ('maria', 'maria@presley.com', ?)`)
+	stmt.Exec(hashedPassword, hashedPassword, elvisPassword, hashedPassword)
 
 	return db, nil
 }
