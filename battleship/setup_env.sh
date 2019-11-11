@@ -28,7 +28,7 @@ function get_answer {
 
 function go_get_var {
   # Try to find and set our go vars
-  printf "Checking for go1.13 (this may take several seconds)\n"
+  printf "Checking for go1.13 (this may take a long time)\n"
   GO=$(which go)
   if [ $? -eq 0 ]; then
     # Success
