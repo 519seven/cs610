@@ -57,8 +57,8 @@ type Player struct {
 	ScreenName 				string
 	LoggedIn   				sql.NullString
 	InBattle   				sql.NullString
-	Created  				time.Time
-	LastLogin  				time.Time
+	Created  				sql.NullString
+	LastLogin  				sql.NullString
 }
 
 type Positions struct {
