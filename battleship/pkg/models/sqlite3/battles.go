@@ -34,6 +34,13 @@ func (m *BattleModel) Accept(player2ID, boardID, battleID int) (int, error) {
 	return 0, errors.New("Player mistmatch")
 }
 
+
+// Check that the person logged in should be updating this battle
+func (m *BattleModel) CheckChallenger(player1ID, battleID, player2BoardID int) bool {
+	return true	// Return true
+}
+
+
 // Create a new Battle - record the challenger (player1) and the challengee (player2)
 func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int) (int, error) {
 	rowid := 0
@@ -137,8 +144,8 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 	
 	stmt := `
 	SELECT 
-	b1.rowid, player1ID, p1.screenName as challenger, bo1.boardName, 
-	player1Accepted, player2ID, p2.screenName as opponent, '', 
+	b1.rowid, player1ID, p1.screenName as challenger, boardName, 
+	player1Accepted, player2ID, p2.screenName as opponent, 
 	player2Accepted, challengeDate as dateAsked, turn 
 	FROM Battles b1 
 	LEFT OUTER JOIN Boards bo1 ON bo1.rowid = b1.player1BoardID 
@@ -147,8 +154,8 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 	WHERE b1.player1ID = ? 
 	UNION 
 	SELECT
-	b2.rowid, player1ID, p4.screenName as challenger, '',
-	player1Accepted, player2ID, p3.screenName as opponent, bo2.boardName, 
+	b2.rowid, player1ID, p4.screenName as challenger, boardName,
+	player1Accepted, player2ID, p3.screenName as opponent, 
 	player2Accepted, challengeDate as dateAsked, turn 
 	FROM Battles b2 
 	LEFT OUTER JOIN Boards bo2 ON bo2.rowid = b2.player2BoardID 
@@ -170,9 +177,9 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 		b := &models.Battle{}
 		err = rows.Scan(
 			&b.ID, 
-			&b.Player1ID, &b.Player1ScreenName, &b.Player1BoardName, &b.Player1Accepted,
-			&b.Player2ID, &b.Player2ScreenName, &b.Player2BoardName, &b.Player2Accepted,
-			&b.ChallengeDate, &b.Turn)
+			&b.Player1ID, &b.Player1ScreenName, &b.Player1BoardName, 
+			&b.Player1Accepted, &b.Player2ID, &b.Player2ScreenName, 
+			&b.Player2Accepted, &b.ChallengeDate, &b.Turn)
 		if err != nil {
 			return nil, err
 		}
@@ -220,6 +227,16 @@ func (m *BattleModel) GetOpen(rowid, battleID int) ([]*models.Battle, error) {
 }
 
 
+// Update turn - other player's turn
+func (m *BattleModel) GetTurn(battleID int) int {
+	turn := 0
+	stmt := `SELECT turn FROM Battles rowid = ?`
+	_ = m.DB.QueryRow(stmt, battleID).Scan(&turn)
+	return turn
+}
+
+
+// Update challenge - opponent has accepted
 func (m *BattleModel) UpdateChallenge(player1 int, player2 int, player2Accepted bool, battleID int) (error) {
 	stmt := `UPDATE Battles SET player2Accepted = ? WHERE rowid = ?`
 	_, err := m.DB.Exec(stmt, player2Accepted, battleID)
@@ -229,6 +246,8 @@ func (m *BattleModel) UpdateChallenge(player1 int, player2 int, player2Accepted 
 	return err
 }
 
+
+// Update turn - other player's turn
 func (m *BattleModel) UpdateTurn(player1 int, player2 int, nextTurn int, battleID int) (error) {
 	// Swap the value of nextTurn
 	if nextTurn == player1 {
@@ -236,7 +255,7 @@ func (m *BattleModel) UpdateTurn(player1 int, player2 int, nextTurn int, battleI
 	} else {
 		nextTurn = player1
 	}
-	stmt := `UPDATE Battles SET nextTurn = ? WHERE rowid = ?`
+	stmt := `UPDATE Battles SET turn = ? WHERE rowid = ?`
 	_, err := m.DB.Exec(stmt, nextTurn, battleID)
 	if err != nil {
 		return err

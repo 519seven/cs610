@@ -204,8 +204,6 @@ func (app *application) acceptBattle(w http.ResponseWriter, r *http.Request) {
 // Enter battle
 func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Entering the battlefield...")
-	var challenger int; challenger = 0
-	var opponent int; opponent = 0
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	battleID, err := strconv.Atoi(r.URL.Query().Get(":id"))
 	if err != nil || battleID < 1 {
@@ -223,18 +221,16 @@ func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 			app.serverError(w, err)
 		}
 	}
+
 	// Determine who is challenger and who is opponent
-	bOne := int(b.Player1BoardID)
-	bTwo := int(b.Player2BoardID)
-	if playerID == bTwo {
+	challenger := int(b.Player1BoardID)
+	opponent := int(b.Player2BoardID)
+	if playerID == opponent {
 		// This authenticated player is the opponent (Player2)
 		// Swap these values
-		holder := bOne
-		challenger = bTwo
+		holder := challenger
+		challenger = opponent
 		opponent = holder
-	} else {
-		challenger = bOne
-		opponent = bTwo
 	}
 
 	// Get postitions for Player1's ships (by boardID)
@@ -264,7 +260,9 @@ func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 
 	app.renderBattle(w, r, "enter.battle.page.tmpl", &templateDataBattle{
 		Battle:							b,
+		ChallengerBoardID:				challenger,
 		ChallengerPositions: 			c,
+		OpponentBoardID:				opponent,
 		OpponentPositions:				o,
 	})
 }
@@ -299,8 +297,8 @@ func (app *application) listBattles(w http.ResponseWriter, r *http.Request) {
 
 // View battle
 func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
-	var challenger int; challenger = 0
-	var opponent int; opponent = 0
+	var challengerBoardID int; challengerBoardID = 0
+	var opponentBoardID int; opponentBoardID = 0
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	battleID, err := strconv.Atoi(r.URL.Query().Get(":id"))
 	if err != nil || battleID < 1 {
@@ -323,14 +321,15 @@ func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 	if playerID == bTwo {
 		// This authenticated player is the opponent (Player2); swap these values
 		holder := bOne
-		challenger = bTwo
-		opponent = holder
+		challengerBoardID = bTwo
+		opponentBoardID = holder
 	} else {
-		challenger = bOne
-		opponent = bTwo
+		challengerBoardID = bOne
+		opponentBoardID = bTwo
 	}
 	// Get postitions for Player1's ships (by boardID)
-	c, err := app.boards.GetPositions(challenger)
+	fmt.Println("challengerBoardID:", challengerBoardID)
+	c, err := app.boards.GetPositions(challengerBoardID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
@@ -341,7 +340,7 @@ func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get postitions for Player2's ships (by boardID)
-	o, err := app.boards.GetPositions(opponent)
+	o, err := app.boards.GetPositions(opponentBoardID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrMissingBoardID) {
 			app.session.Put(r, "flash", "Missing BoardID - Challenge cannot continue")
@@ -355,6 +354,8 @@ func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.renderBattle(w, r, "display.battle.page.tmpl", &templateDataBattle{
+		ChallengerBoardID:				challengerBoardID,
+		OpponentBoardID:				opponentBoardID,
 		Battle:							b,
 		ChallengerPositions: 			c,
 		OpponentPositions:				o,
@@ -778,18 +779,18 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 
 	shipXY := r.URL.Query().Get("shipXY")
-	coordX, err := strconv.Atoi(shipXY[len(shipXY)-2:])				// get the second-to-last character (!!!BUG!!!)
+	coordX, err := strconv.Atoi(shipXY[len(shipXY)-2:])		// get the second-to-last character (!!!BUG!!!)
 	if err != nil {
 		app.serverError(w, err)
 	}
-	coordY := shipXY[len(shipXY)-1:]								// get the last character
-	rowid, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY)
+	coordY := shipXY[len(shipXY)-1:]						// get the last character
+	pinColor, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-	app.session.Put(r, "flash", fmt.Sprintf("Position (id #%d) has been updated...", rowid))
-	http.Redirect(w, r, fmt.Sprintf("/player/list/%d", rowid), http.StatusSeeOther)
+	app.session.Put(r, "flash", fmt.Sprintf("Position (id #%s) has been updated...", pinColor))
+	http.Redirect(w, r, fmt.Sprintf("/player/list/%s", pinColor), http.StatusSeeOther)
 }
 
 // END POSITIONS
@@ -798,29 +799,44 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 // ----------------------------------------------------------------------------
 // BEGIN STRIKE
 
-// Return json containing a list of strikes to caller
+// Return JSON of whose turn it is and a list of strikes on the opponent's board
 func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
-	playerID, err := strconv.Atoi(r.URL.Query().Get(":id"))
+	battleID, err := strconv.Atoi(r.URL.Query().Get(":battleID"))
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-	challengerID, err := app.battles.GetChallenger(playerID)
+	// Need to check battleID against the battleID stored in the session
+	sessionBattleID := app.session.GetInt(r, "battleID")
+	if battleID == sessionBattleID {
+		//app.serverError(w, err)
+		//return
+		fmt.Println("battleID does not match session's battleID...FAIL!")
+	}
+	// The boardID ought to be the opponent's board (not the authenticatedUser)
+	boardID, err := strconv.Atoi(r.URL.Query().Get(":boardID"))
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-	if challengerID > 0 {
+	playerID := app.session.GetInt(r, "authenticatedUser")
+	// Does this battle include this player and this board?
+	// - This is a simple double-check
+	if app.battles.CheckChallenger(playerID, battleID, boardID) {
+		// If we are who we say we are...
+		// - Return a list of strikes for the opponent's board
 		type JsonResponse struct {
-			Status 			string 		`json:"status"`
-			NextPage		string		`json:"redirect"`
-			Time			time.Time	`json:"timestamp"`
+			Turn 			int 					`json:"turn"`
+			Positions		[]*models.Position		`json:"strikes"`
 		}
-		redirect := "/status/battles/list"
+		positions, err := app.positions.List(boardID, playerID)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
 		var JR JsonResponse
-		JR.Status = "challenge"
-		JR.NextPage = redirect
-		JR.Time = time.Now()
+		JR.Turn = app.battles.GetTurn(battleID)
+		JR.Positions = positions
 
 		out, err := json.Marshal(JR)
 		if err != nil {
@@ -830,6 +846,7 @@ func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
 		app.renderJson(w, r, out)
 	} else {
 		// do nothing
+		fmt.Println("The challenger doesn't match the owner of the board or the participant in the battle...")
 		return
 	}
 }
@@ -837,36 +854,27 @@ func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
 
 // When a player launches a strike, see if it is a hit (make pinColor=1) and record strike
 func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("form fields:", r.URL.Query())
-	battleID, err := strconv.Atoi(r.URL.Query().Get("battleID"))
-	if err != nil {
-		battleID = 0
-	}
-	boardID, err := strconv.Atoi(r.URL.Query().Get("boardID"))
-	if err != nil {
-		boardID = 0
-	}
+	err := r.ParseForm()
+	form := forms.New(r.PostForm)
+	battleID, _ := strconv.Atoi(form.Get("battleID"))
+	boardID, _ := strconv.Atoi(form.Get("boardID"))
+	coordX, _ := strconv.Atoi(form.Get("coordX"))
+	coordY := form.Get("coordY")
+	fmt.Println("coordX:", coordX, "|coordY:", coordY)
+	fmt.Println("battleID:", battleID)
+	fmt.Println("boardID:", boardID)
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
-
-	// Get the X & Y coordinates
-	coordinate := r.URL.Query().Get("coordinate")
-	// Remove shipXY (6 chars)
-	coordinate = coordinate[6:]
-	// Assign the last character
-	coordY := coordinate[:1]
-	// Get everything but the last character (could be one or two chars)
-	coordX, err := strconv.Atoi(coordinate[len(coordinate)-1:])
-	if err != nil {
-		coordX = 0
-	}
 
 	// Make sure this player belongs to this battle
 	//checkBattle(playerID, battleID)
 	// Update the database with the new strike, update Turn to be the other player
-	_, err = app.positions.Update(playerID, battleID, boardID, coordX, coordY)
+	pinColor, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY)
 	if err != nil {
 		app.infoLog.Println("Update failed for ", playerID, battleID, boardID, coordX, coordY)
+		app.errorLog.Println("Error", err.Error())
 	}
+	fmt.Println("pinColor is", pinColor)
+	//return pinColor
 }
 
 // END STRIKE

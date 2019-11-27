@@ -61,15 +61,15 @@ type Player struct {
 	LastLogin  				sql.NullString
 }
 
-type Positions struct {
+type Position struct {
 	ID      				int
 	PlayerID 				int
 	BattleID  				sql.NullInt64
 	PositionID      		int
-	ShipType		 		string
+	ShipType		 		sql.NullString
 	CoordX					int
 	CoordY					string
-	PinColor				int
+	PinColor				string
 }
 
 type Signup struct {

@@ -66,7 +66,7 @@ func (m *PlayerModel) Get(rowid int) (*models.Player, error) {
 			return nil, err
 		}
 	}
-	fmt.Println("INFO - Returning player information to authenticate middleware")
+	//fmt.Println("INFO - Returning player information to authenticate middleware")	// debug
 	return p, nil
 }
 

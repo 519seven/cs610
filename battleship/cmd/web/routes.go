@@ -18,6 +18,8 @@ func (app *application) routes() http.Handler {
 	// b.) csrf protection (noSurf)
 	dynamicMiddleware := alice.New(app.session.Enable, noSurf, app.authenticate)
 
+	strikeMiddleware := alice.New(app.session.Enable, app.authenticate)
+
 	mux := pat.New()
 	// More specific routes at the top, less specific routes follow...
 
@@ -33,7 +35,7 @@ func (app *application) routes() http.Handler {
 	// "accept" a challenge from another player
 	mux.Post("/status/confirm/:battleID", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.confirmStatus))
 	// get list of strikes to see if anything has changed
-	mux.Get("/status/strikes/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.getStrikes))
+	mux.Get("/status/strikes/:battleID/:boardID", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.getStrikes))
 	// accept a challenge and redirect to /battle/view
 	mux.Post("/battle/accept", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.acceptBattle))
 	// access a battlefield and continue battling - the battleID will be sent in form post
@@ -43,7 +45,8 @@ func (app *application) routes() http.Handler {
 	mux.Get("/battle/view/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.viewBattle))
 	// Enter the battle (shows board with selections that the users can click on)
 	mux.Post("/battle/enter/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.enterBattle))
-	mux.Post("/battle/strike", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.recordStrike))
+	mux.Post("/battle/strike", strikeMiddleware.Append(app.requireAuthentication).ThenFunc(app.recordStrike))
+	//mux.Post("/battle/strike", dynamicMiddleware.ThenFunc(app.recordStrike))
 
 	/*
 	mux.HandleFunc("/battle/create", app.createBattle)

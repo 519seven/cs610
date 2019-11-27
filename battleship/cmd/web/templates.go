@@ -13,11 +13,17 @@ import (
 
 // About (if the user is logged in, the about page can use this information)
 type templateDataAbout struct {
+	// This just records the boardID that the authenticated player currently has chosen
 	ActiveBoardID			int
+	// This is to prevent CRSF violations
 	CSRFToken				string
+	// For footer
 	CurrentYear 			int
+	// "Flash" message displayed to user upon page render
 	Flash					string
+	// Boolean to tell us if there is an active session
 	IsAuthenticated			bool
+	// Authenticated user's screen name
 	ScreenName				string
 }
 // Battle (the battle containing two boards)
@@ -29,18 +35,22 @@ type templateDataBattle struct {
 	Form					*forms.Form
 	IsAuthenticated			bool
 	ScreenName				string
+	ChallengerID			int
+	ChallengerBoardID		int
+	OpponentID				int
+	OpponentBoardID			int
 	Board					*models.Board
 	Battle      			*models.Battle
 	Battles     			[]*models.Battle
-	ChallengerPositions		[]*models.Positions
+	ChallengerPositions		[]*models.Position
 	ChallengerGrid			template.HTML
-	OpponentPositions		[]*models.Positions
+	OpponentPositions		[]*models.Position
 	OpponentGrid			template.HTML
 }
 // Battles (list)
 type templateDataBattles struct {
 	ActiveBoardID			int
-	AuthenticatedPlayerID		int
+	AuthenticatedPlayerID	int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
@@ -53,7 +63,7 @@ type templateDataBattles struct {
 // Board
 type templateDataBoard struct {
 	ActiveBoardID			int
-	AuthenticatedPlayerID		int
+	AuthenticatedPlayerID	int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string
@@ -61,7 +71,7 @@ type templateDataBoard struct {
 	IsAuthenticated			bool
 	ScreenName				string
 	Board					*models.Board
-	Positions		      	[]*models.Positions
+	Positions		      	[]*models.Position
 	MainGrid				template.HTML
 }
 // Board List

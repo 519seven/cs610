@@ -108,10 +108,10 @@ func (app *application) checkRelationship(resourceID int) bool {
 
 // For Authorization
 func (app *application) isAuthenticated(r *http.Request) bool {
-	fmt.Println("Inspecting context for authentication...")
+	//fmt.Println("Inspecting context for authentication...")				// debug
 	isAuthenticated, ok := r.Context().Value(contextKeyIsAuthenticated).(bool)
 	if !ok {
-		fmt.Println("isAuthenticated returned false!")
+		//fmt.Println("isAuthenticated returned false!")					// debug
 		return false
 	}
 	return isAuthenticated
@@ -119,49 +119,58 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 
 
 // Pre-processing HTML/template data based on data from database
-func (app *application) preprocessBoardFromData(p []*models.Positions, permissions string) template.HTML {
-	var fieldValue string; fieldValue = ""
-	var checked string; checked = ""
-	var onclick string; onclick = ""
-
+func (app *application) preprocessBoardFromData(p []*models.Position, battleID int, csrf_token string, permissions string) template.HTML {
 	gameBoard := "<table><th>&nbsp;</th>"
 	for _, col := range "ABCDEFGHIJ" {
 		gameBoard += fmt.Sprintf("<th>%s</th>", string(col))
 	}
 	for row := 1; row < 11; row++ {
-		gameBoard += fmt.Sprintf("<tr><td>%d</td>", row)
+		gameBoard += "<tr>"
+		gameBoard += fmt.Sprintf("<td>%d</td>", row)
 		//rowStr := strconv.Itoa(row)
 		for _, col := range "ABCDEFGHIJ" {
-			fieldValue = ""
+			var fieldHTML string; fieldHTML = ""
+			var fieldValue string; fieldValue = "&nbsp;"
+			var checked string; checked = ""
+			var onclick string; onclick = ""
+			var class string; class = ""
 			for _, onePosition := range p {
 				if onePosition.CoordX == row && onePosition.CoordY == string(col) {
-					if strings.ToUpper(onePosition.ShipType) == "CRUISER" {
-						fieldValue = strings.ToUpper(onePosition.ShipType[1:2])
-					} else {
-						fieldValue = strings.ToUpper(onePosition.ShipType[0:1])
+					if onePosition.ShipType.Valid {
+						if strings.ToUpper(onePosition.ShipType.String) == "CRUISER" {
+							fieldValue = "R"	// Cruiser is represented with an "R"
+						} else {
+							fieldValue = strings.ToUpper(onePosition.ShipType.String[0:1])
+						}
 					}
-				}
-				if onePosition.PinColor != 0 {
-					checked = "CHECKED"
-					onclick = "return false;"
-				} else {
-					checked = ""
-					onclick = ""
+					fmt.Println("pinColor:", onePosition.PinColor)
+					if onePosition.PinColor != "" && onePosition.PinColor != "0" {
+						checked = "checked"
+						onclick = "onclick=\"return false;\""
+						class = fmt.Sprintf("id='battleBoard%s' ", onePosition.PinColor)
+					} else {
+						checked = ""
+						onclick = ""
+						class = ""
+					}
+					break
 				}
 			}
+			gameBoard += "<td>"
+			fieldName := fmt.Sprintf("shipXY%d%s", row, string(col))
 			if permissions == "ro" {
-				gameBoard += "<td>"
-				gameBoard += fmt.Sprintf("<input type='checkbox' name=\"shipXY%d%s\" value=\"%s\">%s</td>", 
-					row, string(col), fieldValue, fieldValue)
+				fieldHTML = fmt.Sprintf("<label class=\"container\">%s<input type='checkbox' name=\"%s\" %s value=\"%s\" %s><span class=\"checkmark\"></span></label>", 
+					fieldValue, fieldName, class, fieldValue, checked)
 			} else if permissions == "rw" {
-				gameBoard += fmt.Sprintf(
-					"<td><input type='text'	maxlength=1 size=6 name=\"shipXY%d%s\" value=\"%s\"></td>", 
-					row, string(col), fieldValue)
+				fieldHTML = fmt.Sprintf(
+					"<label class=\"container\"><input type='text' maxlength=1 size=6 name=\"%s\" %s value=\"%s\" onclick=\"save_checkbox('%s');\"><span class=\"checkmark\"></span></label>", 
+					fieldName, class, fieldValue, fieldName)
 			} else if permissions == "hidden" {
-				gameBoard += "<td>"
-				gameBoard += fmt.Sprintf("<input type='checkbox' name=\"shipXY%d%s\" %s %s></td>", 
-					row, string(col), checked, onclick)
+				fieldHTML = fmt.Sprintf("<label class=\"container\"><input class=\"striker\" type='checkbox' name=\"%s\" %s %s %s><span class=\"checkmark\"></span></label>", 
+					fieldName, class, onclick, checked)
 			}
+			fmt.Println(fieldName, ":", fieldHTML)
+			gameBoard += fieldHTML + "</td>"
 		}
 		gameBoard += "</tr>"
 	}
@@ -271,13 +280,13 @@ func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Req
 	td.ScreenName = app.session.GetString(r, "screenName")
 	if td.ChallengerPositions != nil {
 		fmt.Println("Positions is not nil.  We should build MainGrid here...")
-		td.ChallengerGrid = app.preprocessBoardFromData(td.ChallengerPositions, "ro")
+		td.ChallengerGrid = app.preprocessBoardFromData(td.ChallengerPositions, td.Battle.ID, td.CSRFToken, "ro")
 	} else {
 		td.ChallengerGrid = app.preprocessBoardFromRequest(r)
 	}
 	if td.OpponentPositions != nil {
 		fmt.Println("Positions is not nil.  We should build MainGrid here...")
-		td.OpponentGrid = app.preprocessBoardFromData(td.OpponentPositions, "hidden")
+		td.OpponentGrid = app.preprocessBoardFromData(td.OpponentPositions, td.Battle.ID, td.CSRFToken, "hidden")
 	} else {
 		td.OpponentGrid = app.preprocessBoardFromRequest(r)
 	}
@@ -357,7 +366,7 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	}
 	if td.Positions != nil {
 		fmt.Println("Positions is not nil.  We should build MainGrid here...")
-		td.MainGrid = app.preprocessBoardFromData(td.Positions, "ro")
+		td.MainGrid = app.preprocessBoardFromData(td.Positions, 0, "", "ro")
 	} else {
 		td.MainGrid = app.preprocessBoardFromRequest(r)
 	}

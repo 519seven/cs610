@@ -22,52 +22,29 @@
         </table>
     </div>
 	<script type='text/javascript'>
-	$(document).ready(function() { 
-		$(':checkbox').change(function(){
-            var frm = $('#opponentBoard');
-            var csrf = {{.CSRFToken}};
-            var battleID = {{.Battle.ID}};
-            var dataString = 'csrf_token='+csrf+'&battleID='+battleID+'&coordinate='+this.name;
-            alert(dataString);
-            coordX = this.name.slice(6, this.name.length-1)
-            coordY = this.name.slice(this.name.length-1)
-            if (confirm('Send strike to '+coordX+' '+coordY+'?')) {
-                $.ajax({
-                    type: 'POST',
-                    url: '/battle/strike',
-                    data: dataString,
-                    success: function() {
-                        alert('Strike launched!');
-                    },
-                    error: function(request,error) {
-                        alert('Error!');
-                    }
-                });
-            }else{ 
-                alert("Aborting strike!"); 
-                // Now, uncheck the box!
-                this.checked = false;
-            };
-		});
-	});
-	(function poll() {
+    function save_checkbox(checkbox_value) {
+        console.log(checkbox_value);
+        var coX = checkbox_value.slice(6, checkbox_value.length-1)
+        var coY = checkbox_value.slice(checkbox_value.length-1)
+        if (confirm('Send strike to '+coX+' '+coY+'?')) {
+            $.post( '/battle/strike' , 
+                { coordX : coX, coordY : coY, csrf_token : "{{.CSRFToken}}", battleID : {{.Battle.ID}} }, 
+                function( response ) {
+                    console.log(response);
+                }
+            );
+        };
+    };
+    (function poll() {
 		var continuePolling = true;
 		var pageData;
 		setTimeout(function() {
 			$.ajax({
-				url: "/status/strikes/{{.Battle.ID}}",
+				url: "/status/strikes/{{.Battle.ID}}/{{.ChallengerBoardID}}",
 				type: "GET",
 				success: function(data) {
 					//jsonData = JSON.parse(data);					// don't need to parse, it's already json
-					console.log("a challenger awaits you");
-					continuePolling = false;
-					if (confirm('Would you like to view your new challenge?')) {
-						alert('Taking you to '+data.redirect);
-						$(location).attr('href', data.redirect);	// if attr doesn't work, use val
-					}else{
-						alert('Turning off polling for this visit.\nVisit '+data.redirect+' to view your challenge(s).');
-						alert('Next, made a menu item appear for users to click to see their challenges');
-					};
+					console.log("a list of strikes has been sent..."+data.strikes);
 				},
 				error: function(request,error) {
 					console.log("no change")
@@ -78,5 +55,35 @@
 			})
 		}, 5000);
 	})();
+    $('.striker').click(function() {
+        var fieldName = $(this).attr('name');
+        var coX = fieldName.slice(6, fieldName.length-1);
+        var coY = fieldName.slice(fieldName.length-1);
+        if (this.checked && confirm('Send strike to '+coX+' '+coY+'?')) {
+            $.ajax({
+                type: 'post',
+                url: '/battle/strike',
+                data: {coordX: coX, coordY: coY, boardID:{{.OpponentBoardID}}, battleID:{{.Battle.ID}}, csrf_token:"{{.CSRFToken}}"},
+                success: function(data) {
+                    alert('Missile launched successfully...');
+                    if ( data.includes('/login') && data.includes('<html>') ) {
+                        // If login is in the returned data, redirect the user
+                        // This is not the ideal way to do this
+                        // - The isauthenticated function should handle the redirection
+                        alert('Session is no longer active!\nYou must log in again.\nRedirecting...');
+                        response.redirect('/login');
+                    }
+                    alert('Status: '+data);
+                    $('#container').html(data);
+                },
+                error: function() {
+                    alert('Strike failed to send.');
+                },
+                complete: function() {
+                    console.log('Strike has been completed');
+                }
+            });
+        }
+    })
 	</script>
 {{end}}
