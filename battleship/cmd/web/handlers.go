@@ -799,7 +799,8 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 // ----------------------------------------------------------------------------
 // BEGIN STRIKE
 
-// Return JSON of whose turn it is and a list of strikes on the opponent's board
+// Get a list of strikes for the authenticated user's board
+// - This information is used to update the authenticated user's board
 func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
 	battleID, err := strconv.Atoi(r.URL.Query().Get(":battleID"))
 	if err != nil {
@@ -813,20 +814,20 @@ func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
 		//return
 		fmt.Println("battleID does not match session's battleID...FAIL!")
 	}
-	// The boardID ought to be the opponent's board (not the authenticatedUser)
+	// This board ID ought to be the authenticated user's board
 	boardID, err := strconv.Atoi(r.URL.Query().Get(":boardID"))
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-	playerID := app.session.GetInt(r, "authenticatedUser")
+	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	// Does this battle include this player and this board?
 	// - This is a simple double-check
-	if app.battles.CheckChallenger(playerID, battleID, boardID) {
+	if app.battles.CheckBoardOwner(playerID, battleID, boardID) {
 		// If we are who we say we are...
 		// - Return a list of strikes for the opponent's board
 		type JsonResponse struct {
-			Turn 			int 					`json:"turn"`
+			Turn 			string					`json:"turn"`
 			Positions		[]*models.Position		`json:"strikes"`
 		}
 		positions, err := app.positions.List(boardID, playerID)
@@ -835,14 +836,22 @@ func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var JR JsonResponse
-		JR.Turn = app.battles.GetTurn(battleID)
+		JR.Turn = app.battles.CheckTurn(battleID, playerID)
+		if err != nil {
+			app.serverError(w, err)
+			app.errorLog.Println("Error", err.Error())
+			return
+		}
+		//fmt.Println("JR.Turn:", JR.Turn)
 		JR.Positions = positions
+		//fmt.Println("JR.Positions:", JR.Positions)
 
 		out, err := json.Marshal(JR)
 		if err != nil {
 			app.serverError(w, err)
 			return
 		}
+		fmt.Println("Sending", string(out), "to browser")
 		app.renderJson(w, r, out)
 	} else {
 		// do nothing
@@ -880,3 +889,48 @@ func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
 // END STRIKE
 // ----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// BEGIN TURN
+
+// Given a key and playerID, check if they match what's in the database
+func (app *application) checkTurn(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	form := forms.New(r.PostForm)
+	battleID, _ := strconv.Atoi(form.Get("battleID"))
+	secretTurn := form.Get("secret_turn")
+	playerID := app.session.GetInt(r, "authenticatedPlayerID")
+	var out []byte;
+
+	type PlayerTurn struct {
+		Valid 			bool			`json:"Valid"`
+	}
+	// Make sure the player that submitted this strike is the one whose turn it is
+	// Check the secret_turn against the player's ID
+	whoseTurn := app.battles.CheckTurn(battleID, playerID)
+	var PT PlayerTurn
+	if err != nil {
+		app.errorLog.Println("Looks like somebody is attempting to hack or the person submitting the strike is not in sync with the database...")
+		PT.Valid = false
+		out, err = json.Marshal(PT)
+		if err != nil {
+			app.serverError(w, err)
+		}
+		}
+	if string(whoseTurn) == secretTurn && secretTurn != "" {
+		PT.Valid = true
+		out, err = json.Marshal(PT)
+		if err != nil {
+			app.serverError(w, err)
+		}
+	} else {
+		app.errorLog.Println("Not this person's turn...hacking attempt?")
+		PT.Valid = false
+		out, err = json.Marshal(PT)
+		if err != nil {
+			app.serverError(w, err)
+		}
+	}
+	fmt.Println("Sending", string(out), "to browser")
+	app.renderJson(w, r, out)
+}

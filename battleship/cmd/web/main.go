@@ -59,7 +59,7 @@ func main() {
 	dsn := flag.String("dsn", "./battleship.db", "SQLite data source name")
 	initdb := flag.Bool("initialize", false, "Start with a fresh database")
 	debug := flag.Bool("debug", false, "Output debugging information to browser")
-	// 32 bytes long
+	// 32 bytes long secret for encrypting and authenticating the session cookies
 	secret := flag.String("secret", "nquR81XagSrAEHYXJSFw8y2PLbyWlF1Z", "Secret key")
 	flag.Parse()
 

@@ -57,7 +57,7 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		(player1ID INTEGER, player1Accepted BOOLEAN, player1BoardID INTEGER,
 		 player2ID INTEGER, player2Accepted BOOLEAN, player2BoardID INTEGER,
 		 challengeDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-		 turn INTEGER)`)
+		 turn INTEGER, secretTurn STRING)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
 		(boardName TEXT, playerID INTEGER, 
@@ -120,6 +120,8 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 
 // Pre-processing HTML/template data based on data from database
 func (app *application) preprocessBoardFromData(p []*models.Position, battleID int, csrf_token string, permissions string) template.HTML {
+	var playerID int; playerID = 0
+
 	gameBoard := "<table><th>&nbsp;</th>"
 	for _, col := range "ABCDEFGHIJ" {
 		gameBoard += fmt.Sprintf("<th>%s</th>", string(col))
@@ -131,10 +133,15 @@ func (app *application) preprocessBoardFromData(p []*models.Position, battleID i
 		for _, col := range "ABCDEFGHIJ" {
 			var fieldHTML string; fieldHTML = ""
 			var fieldValue string; fieldValue = "&nbsp;"
+			var inputid string; inputid = ""
 			var checked string; checked = ""
 			var onclick string; onclick = ""
 			var class string; class = ""
 			for _, onePosition := range p {
+				// This playerID ought to help us determine whose board these checkboxes belong to
+				if playerID == 0 {
+					playerID = onePosition.PlayerID
+				}
 				if onePosition.CoordX == row && onePosition.CoordY == string(col) {
 					if onePosition.ShipType.Valid {
 						if strings.ToUpper(onePosition.ShipType.String) == "CRUISER" {
@@ -147,11 +154,12 @@ func (app *application) preprocessBoardFromData(p []*models.Position, battleID i
 					if onePosition.PinColor != "" && onePosition.PinColor != "0" {
 						checked = "checked"
 						onclick = "onclick=\"return false;\""
-						class = fmt.Sprintf("id='battleBoard%s' ", onePosition.PinColor)
+						class = fmt.Sprintf("class='%sBattleBoard' ", onePosition.PinColor)
 					} else {
 						checked = ""
 						onclick = ""
 						class = ""
+						inputid = ""
 					}
 					break
 				}
@@ -159,17 +167,17 @@ func (app *application) preprocessBoardFromData(p []*models.Position, battleID i
 			gameBoard += "<td>"
 			fieldName := fmt.Sprintf("shipXY%d%s", row, string(col))
 			if permissions == "ro" {
-				fieldHTML = fmt.Sprintf("<label class=\"container\">%s<input type='checkbox' name=\"%s\" %s value=\"%s\" %s><span class=\"checkmark\"></span></label>", 
-					fieldValue, fieldName, class, fieldValue, checked)
+				fieldHTML = fmt.Sprintf("<label class=\"container\">%s<input type='checkbox' name=\"%d_%s\" %s value=\"%s\" %s %s><span class=\"checkmark\"></span></label>", 
+					fieldValue, playerID, fieldName, class, fieldValue, inputid, checked)
 			} else if permissions == "rw" {
 				fieldHTML = fmt.Sprintf(
-					"<label class=\"container\"><input type='text' maxlength=1 size=6 name=\"%s\" %s value=\"%s\" onclick=\"save_checkbox('%s');\"><span class=\"checkmark\"></span></label>", 
-					fieldName, class, fieldValue, fieldName)
+					"<label class=\"container\"><input type='text' maxlength=1 size=6 name=\"%d_%s\" %s value=\"%s\" onclick=\"save_checkbox('%s');\" %s><span class=\"checkmark\"></span></label>", 
+					playerID, fieldName, class, fieldValue, fieldName, inputid)
 			} else if permissions == "hidden" {
-				fieldHTML = fmt.Sprintf("<label class=\"container\"><input class=\"striker\" type='checkbox' name=\"%s\" %s %s %s><span class=\"checkmark\"></span></label>", 
-					fieldName, class, onclick, checked)
+				fieldHTML = fmt.Sprintf("<label class=\"container\"><input class=\"striker\" type='checkbox' name=\"%d_%s\" %s %s %s %s><span class=\"checkmark\"></span></label>", 
+					playerID, fieldName, class, onclick, inputid, checked)
 			}
-			fmt.Println(fieldName, ":", fieldHTML)
+			//fmt.Println(fieldName, ":", fieldHTML)						// debug
 			gameBoard += fieldHTML + "</td>"
 		}
 		gameBoard += "</tr>"
@@ -480,6 +488,7 @@ func (app *application) renderConfirmStatus(w http.ResponseWriter, r *http.Reque
 func (app *application) renderJson(w http.ResponseWriter, r *http.Request, out []byte) {
 	// Convert challengerID to string so we can add more strings later
 	w.Header().Set("Content-Type", "application/json")
+	//json.NewEncoder(w).Encode(out)
 	w.Write(out)
 }
 

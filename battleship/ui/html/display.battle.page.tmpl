@@ -3,7 +3,12 @@
 {{define "title"}}View Board{{end}}
 {{define "main"}}
     <div>
-        <label>Welcome to The Battle of {{.Battle.Title}}</label>
+        <label>Welcome to The Battle of {{.Battle.Title}}
+            <form style='display:inline;' action="/battle/enter/{{.Battle.ID}}" method=POST>
+                <input type='hidden' name='csrf_token' value='{{$.CSRFToken}}'>
+                <input type=button onclick='javascript:this.form.submit()' value="Enter Battle">
+            </form>
+        </label>
         <table border=1>
             <tr><td>Your Board</td><tr>
             <tr>
@@ -15,14 +20,6 @@
             <tr>
                 <td>
                     {{.OpponentGrid}}
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <form action="/battle/enter/{{.Battle.ID}}" method=POST>
-                        <input type='hidden' name='csrf_token' value='{{$.CSRFToken}}'>
-                        <input type=submit value="Enter Battle">
-                    </form>
                 </td>
             </tr>
         </table>

@@ -3,7 +3,11 @@
 {{define "title"}}View Board{{end}}
 {{define "main"}}
     <div>
-        <label>Welcome to The Battle of {{.Battle.Title}}</label>
+        <label>Welcome to The Battle of {{.Battle.Title}}
+            <form style='display:inline;' action="" method="">
+                <input type=button onclick='return false;' value="In Battle">
+            </form>
+        </label>
         <table border=1>
             <tr><td>Your Board</td><tr>
             <tr>
@@ -20,70 +24,106 @@
                 </td>
             </tr>
         </table>
+        <input type=hidden id='secretTurn' name='secretTurn' value="uninitialized">
     </div>
 	<script type='text/javascript'>
     function save_checkbox(checkbox_value) {
         console.log(checkbox_value);
-        var coX = checkbox_value.slice(6, checkbox_value.length-1)
-        var coY = checkbox_value.slice(checkbox_value.length-1)
-        if (confirm('Send strike to '+coX+' '+coY+'?')) {
-            $.post( '/battle/strike' , 
-                { coordX : coX, coordY : coY, csrf_token : "{{.CSRFToken}}", battleID : {{.Battle.ID}} }, 
-                function( response ) {
-                    console.log(response);
-                }
-            );
-        };
-    };
-    (function poll() {
-		var continuePolling = true;
-		var pageData;
-		setTimeout(function() {
-			$.ajax({
-				url: "/status/strikes/{{.Battle.ID}}/{{.ChallengerBoardID}}",
-				type: "GET",
-				success: function(data) {
-					//jsonData = JSON.parse(data);					// don't need to parse, it's already json
-					console.log("a list of strikes has been sent..."+data.strikes);
-				},
-				error: function(request,error) {
-					console.log("no change")
-				},
-				dataType: "json",
-				complete: function() { if (continuePolling) { poll(); }},
-				timeout: 2000
-			})
-		}, 5000);
-	})();
-    $('.striker').click(function() {
-        var fieldName = $(this).attr('name');
-        var coX = fieldName.slice(6, fieldName.length-1);
-        var coY = fieldName.slice(fieldName.length-1);
-        if (this.checked && confirm('Send strike to '+coX+' '+coY+'?')) {
-            $.ajax({
-                type: 'post',
-                url: '/battle/strike',
-                data: {coordX: coX, coordY: coY, boardID:{{.OpponentBoardID}}, battleID:{{.Battle.ID}}, csrf_token:"{{.CSRFToken}}"},
-                success: function(data) {
-                    alert('Missile launched successfully...');
-                    if ( data.includes('/login') && data.includes('<html>') ) {
-                        // If login is in the returned data, redirect the user
-                        // This is not the ideal way to do this
-                        // - The isauthenticated function should handle the redirection
-                        alert('Session is no longer active!\nYou must log in again.\nRedirecting...');
-                        response.redirect('/login');
-                    }
-                    alert('Status: '+data);
-                    $('#container').html(data);
-                },
-                error: function() {
-                    alert('Strike failed to send.');
-                },
-                complete: function() {
-                    console.log('Strike has been completed');
-                }
-            });
+        var coX = checkbox_value.slice(6, checkbox_value.length-1);
+        var coY = checkbox_value.slice(checkbox_value.length-1);
+        if (confirm("Send strike to "+coX+" "+coY+"?")) {
+          $.post("/battle/strike",
+            { coordX : coX, coordY : coY, csrf_token : "{{.CSRFToken}}", battleID : {{.Battle.ID}} },
+            function( response ) { console.log(response); }
+          );
         }
-    })
+    }
+    (
+    function poll() {
+	  var continuePolling = true;
+	  var pageData;
+	  setTimeout(function() {
+	    $.ajax(
+            {url: "/status/strikes/{{.Battle.ID}}/{{.ChallengerBoardID}}",
+            type: "GET",
+            dataType: 'json',
+			success: function(data) {
+			  //var jsonData = $.parseJSON(data);					// don't need to parse, it's already json
+			  console.log("strikes received..."+data.strikes[0]);
+              console.log(data.strikes.length);
+              // Uncheck all checkboxes
+              for (var rows = 0; rows < 10; rows++) {
+                  for (var cols = 0; cols < 10; cols++) {
+                      $("input[name='{{.ChallengerBoardID}}_shipXY"+rows+String.fromCharCode(65+cols)+"']:checkbox").prop('checked', false);
+                      //console.log('unchecking shipXY'+rows+String.fromCharCode(97+cols));
+                  }
+              }
+              for (var i = 0; i < data.strikes.length; i++) {
+                var obj = data.strikes[i];
+                // make sure existing checkboxes are checked to protect ourselves from some nonsense (and to pick up new strikes)
+                $("input[name='{{.ChallengerBoardID}}_shipXY"+obj.CoordX+obj.CoordY+"']:checkbox").prop('checked', true);
+                console.log('checking {{.ChallengerBoardID}}_shipXY'+obj.CoordX+obj.CoordY);
+              }
+              // Update turn
+              $('input[type=hidden]#secretTurn').val(data.turn);
+              console.log("secretTurn has been defined as "+data.turn);
+            },
+            error: function(request,error) {console.log("no change")},
+            dataType: "json",
+            complete: function() { if (continuePolling) { poll(); }},
+            timeout: 2000
+        })
+	  }, 5000);
+	})();
+    function check_turn(st) {
+      $.ajax({
+        type: "post",
+        url: "/battle/turn",
+        data: {battleID: {{.Battle.ID}}, secret_turn: st, csrf_token: "{{.CSRFToken}}"},
+        success: function(data) { alert('data.Valid: '+data.Valid); return data.Valid; },
+        error: function(data) { return false; }
+      });
+    }
+    $(".striker").click(
+      function() {
+        var fieldName= $(this).attr("name");
+        nameProper = fieldName.substr(2, fieldName.length-1);
+        var coX = nameProper.slice(6, nameProper.length-1);
+        var coY = nameProper.slice(nameProper.length-1);
+        var st = $('input[type=hidden]#secretTurn').val();
+        alert(st+"|"+$("input[name='"+fieldName+"']:checkbox").prop('checked'));
+        if (st == "uninitialized") { alert("Initializing...please wait"); } else {
+          //alert($("input[name='"+fieldName+"']:checkbox").prop('checked'));
+          if (check_turn(st) && $("input[name='"+fieldName+"']:checkbox").prop('checked')) {
+            if (confirm("Send strike to "+coX+" "+coY+"?")) {
+              console.log("Sending strike!");
+              $.ajax({
+                type: "post",
+                url: "/battle/strike",
+                data: {coordX: coX, coordY: coY, boardID: {{.OpponentBoardID}}, battleID: {{.Battle.ID}}, csrf_token: {{.CSRFToken}}},
+                success: function(data) {
+                  alert("Missile launched successfully...");
+                  if ( data.includes("/login") && data.includes("<html>") ) {
+                    // If login page is returned to user, redirect (ideally handle this on server)
+                    alert("Session is no longer active!\nYou must log in again.\nRedirecting...");
+                    response.redirect("/login");
+                  }
+                  alert("Status: "+data);
+                  $("#container").html(data);
+                },
+                error: function(data) { alert("Strike failed..."); },
+                complete: function(data) { console.log("Strike has been completed"); }
+              });
+            } else {
+              // No, don't send strike...so, uncheck the box
+              $("input[name='"+fieldName+"']:checkbox").prop('checked', false);
+            }
+          } else if ($("input[name='"+fieldName+"']:checkbox").prop('checked')) {
+            alert("Please wait your turn");
+            $("input[name='"+fieldName+"']:checkbox").prop('checked', false);
+          }
+        }
+      }
+    )
 	</script>
 {{end}}

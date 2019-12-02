@@ -1,6 +1,7 @@
 package sqlite3
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -14,7 +15,7 @@ type BattleModel struct {
 
 // Accept a challenge (battle)
 func (m *BattleModel) Accept(player2ID, boardID, battleID int) (int, error) {
-	player2IDFromDB := 0
+	var player2IDFromDB int; player2IDFromDB = 0
 	// Check to be sure that the person accepting this battle is matches the "player2ID"
 	stmt := `SELECT player2ID FROM Battles WHERE rowid = ? AND player2Accepted = false`
 	err := m.DB.QueryRow(stmt, battleID).Scan(&player2IDFromDB)
@@ -35,6 +36,32 @@ func (m *BattleModel) Accept(player2ID, boardID, battleID int) (int, error) {
 }
 
 
+// GetBoardOwner - Ensure the player is the owner of this board and this board is part of this battle
+func (m *BattleModel) CheckBoardOwner(playerID, battleID, boardID int) bool {
+	var battleIDEntry int; battleIDEntry = 0
+	stmt := `SELECT rowid
+				FROM Battles
+				WHERE
+				((player1ID = ? AND player1BoardID = ?)
+				OR
+				(player2ID = ? AND player2BoardID = ?))
+				AND rowid = ?`
+	//fmt.Println("CheckBoardOwner:", stmt, ":playerID:", playerID, ":battleID:", battleID, ":boardID:", boardID)			// debug
+	err := m.DB.QueryRow(stmt, playerID, boardID, playerID, boardID, battleID).Scan(&battleIDEntry)
+	fmt.Println("battleIDEntry:", battleIDEntry)
+	if err != nil {
+		//fmt.Println("Error in CheckBoardOwner:", err.Error())					// debug
+		return false
+	}
+
+	if battleIDEntry != 0 {
+		//fmt.Println("board owner is confirmed...")							// debug
+		return true
+	}
+	return false
+}
+
+
 // Check that the person logged in should be updating this battle
 func (m *BattleModel) CheckChallenger(player1ID, battleID, player2BoardID int) bool {
 	return true	// Return true
@@ -43,8 +70,8 @@ func (m *BattleModel) CheckChallenger(player1ID, battleID, player2BoardID int) b
 
 // Create a new Battle - record the challenger (player1) and the challengee (player2)
 func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int) (int, error) {
-	rowid := 0
-	battleID := 0
+	var rowid int; rowid = 0
+	var battleID int; battleID = 0
 	
 	fmt.Println("Currently, only one game per challenger/challengee pair is supported at a time.")
 	fmt.Println("Checking to see if there is already a challenge out there...")
@@ -75,8 +102,14 @@ func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int) (int, err
 	} else {
 		fmt.Println("Battle between these two players was not found.")
 		fmt.Println("Creating new battle...")
-		stmt = `INSERT INTO Battles (player1ID, player1Accepted, player1BoardID, player2ID, player2Accepted) VALUES (?, ?, ?, ?, ?)`
-		result, err := m.DB.Exec(stmt, player1ID, 1, player1BoardID, player2ID, 0)
+		stmt = `INSERT INTO Battles (player1ID, player1Accepted, player1BoardID, player2ID, player2Accepted, turn, secretTurn) VALUES (?, ?, ?, ?, ?, ?, ?)`
+		// The opponent will always go first
+		secretTurn := make([]byte, 32)
+		_, err := rand.Read(secretTurn)
+		if err != nil {
+			return 0, err
+		}	
+		result, err := m.DB.Exec(stmt, player1ID, 1, player1BoardID, player2ID, 0, player2ID, secretTurn)
 		if err != nil {
 			return 0, err
 		}
@@ -112,6 +145,7 @@ func (m *BattleModel) Get(playerID, battleID int) (*models.Battle, error) {
 	return b, nil
 }
 
+
 // GetChallenger - See if there are any challengers out there
 func (m *BattleModel) GetChallenger(currentPlayerID int) (int, error) {
 	var challenger int
@@ -136,6 +170,7 @@ func (m *BattleModel) GetChallenger(currentPlayerID int) (int, error) {
 
 	return challenger, err
 }
+
 
 // GetAll - Get all active battles or challenges (this could be combined with GetOpen below)
 func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
@@ -227,12 +262,27 @@ func (m *BattleModel) GetOpen(rowid, battleID int) ([]*models.Battle, error) {
 }
 
 
-// Update turn - other player's turn
-func (m *BattleModel) GetTurn(battleID int) int {
-	turn := 0
+// Just ask the database whose turn it is
+// - The database will return a secret key representing player1 or player2
+func (m *BattleModel) CheckTurn(battleID, playerID int) string {
+	var secretTurn string
+
+	stmt := `SELECT secretTurn FROM Battles WHERE rowid = ? AND turn = ?`
+	fmt.Println("secretTurn stmt:", stmt, "|", battleID, "|", playerID)
+	_ = m.DB.QueryRow(stmt, battleID, playerID).Scan(&secretTurn)
+	fmt.Println("secretTurn:", secretTurn)
+	return secretTurn
+}
+
+
+// Just ask the database whose turn it is
+// - The database will return a secret key representing player1 or player2
+func (m *BattleModel) GetTurn(battleID int) (int, error) {
+	var turn int = 0
+
 	stmt := `SELECT turn FROM Battles rowid = ?`
 	_ = m.DB.QueryRow(stmt, battleID).Scan(&turn)
-	return turn
+	return turn, nil
 }
 
 
@@ -248,17 +298,22 @@ func (m *BattleModel) UpdateChallenge(player1 int, player2 int, player2Accepted 
 
 
 // Update turn - other player's turn
-func (m *BattleModel) UpdateTurn(player1 int, player2 int, nextTurn int, battleID int) (error) {
+func (m *BattleModel) UpdateTurn(player1 int, player2 int, nextTurn int, battleID int) error {
 	// Swap the value of nextTurn
 	if nextTurn == player1 {
 		nextTurn = player2
 	} else {
 		nextTurn = player1
 	}
-	stmt := `UPDATE Battles SET turn = ? WHERE rowid = ?`
-	_, err := m.DB.Exec(stmt, nextTurn, battleID)
+	secretTurn := make([]byte, 32)
+	_, err := rand.Read(secretTurn)
 	if err != nil {
 		return err
 	}
-	return err
+	stmt := `UPDATE Battles SET secretTurn = ?, turn = ? WHERE rowid = ?`
+	_, err = m.DB.Exec(stmt, secretTurn, nextTurn, battleID)
+	if err != nil {
+		return err
+	}
+	return nil
 }

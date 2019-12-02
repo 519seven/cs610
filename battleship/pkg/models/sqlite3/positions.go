@@ -20,10 +20,19 @@ func (m *PositionModel) Get(id int) (*models.Position, error) {
 }
 func (m *PositionModel) List(boardID, playerID int) ([]*models.Position, error) {
 	// Get coordinates that are attempted or successful strikes (gray or red) for this battle
-	stmt := `SELECT coordX, coordY, pinColor FROM Positions p WHERE (pinColor == 'gray' OR pinColor == 'red') AND boardID = ? AND playerID = ?;`
+	stmt := `SELECT
+				coordX, coordY, pinColor 
+			FROM 
+				Positions p 
+			WHERE 
+				(pinColor == 'gray' OR pinColor == 'red')
+			AND
+				boardID = ?;`
+			//AND													// playerID not necessary when querying for positions
+			//	playerID = ?;`
 	rows, err := m.DB.Query(stmt, boardID, playerID)
 	if err != nil {
-		fmt.Println("SQL failure:", stmt, err.Error())
+		//fmt.Println("SQL failure:", stmt, err.Error())			// debug
 		return nil, err
 	}
 	defer rows.Close()
@@ -32,14 +41,13 @@ func (m *PositionModel) List(boardID, playerID int) ([]*models.Position, error) 
 
 	for rows.Next() {
 		p := &models.Position{}
-		err = rows.Scan(
-			&p.ID, 
-			&p.PlayerID, &p.BattleID, &p.PositionID, 
-			&p.ShipType, &p.CoordX, &p.CoordY, &p.PinColor)
+		err = rows.Scan(&p.CoordX, &p.CoordY, &p.PinColor)
 		if err != nil {
 			return nil, err
 		}
+		//fmt.Println("Position struct:", p)
 		positions = append(positions, p)
+		//fmt.Println("positions:", positions)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
