@@ -47,12 +47,10 @@ func (m *BattleModel) CheckBoardOwner(playerID, battleID, boardID int) bool {
 				AND rowid = ?`
 	//fmt.Println("CheckBoardOwner:", stmt, ":playerID:", playerID, ":battleID:", battleID, ":boardID:", boardID)			// debug
 	err := m.DB.QueryRow(stmt, playerID, boardID, playerID, boardID, battleID).Scan(&battleIDEntry)
-	fmt.Println("battleIDEntry:", battleIDEntry)
 	if err != nil {
 		//fmt.Println("Error in CheckBoardOwner:", err.Error())					// debug
 		return false
 	}
-
 	if battleIDEntry != 0 {
 		//fmt.Println("board owner is confirmed...")							// debug
 		return true
@@ -265,7 +263,6 @@ func (m *BattleModel) CheckTurn(battleID, playerID int) string {
 	var secretTurn string
 
 	stmt := `SELECT secretTurn FROM Battles WHERE rowid = ? AND turn = ?`
-	fmt.Println("secretTurn stmt:", stmt, "|", battleID, "|", playerID)
 	_ = m.DB.QueryRow(stmt, battleID, playerID).Scan(&secretTurn)
 	fmt.Println("secretTurn:", secretTurn)
 	return secretTurn

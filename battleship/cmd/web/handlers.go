@@ -204,8 +204,6 @@ func (app *application) acceptBattle(w http.ResponseWriter, r *http.Request) {
 // Enter battle
 func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Entering the battlefield...")
-	var challengerBoardID int; challengerBoardID = 0
-	var opponentBoardID int; opponentBoardID = 0
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	battleID, err := strconv.Atoi(r.URL.Query().Get(":id"))
 	if err != nil || battleID < 1 {
@@ -223,28 +221,8 @@ func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 			app.serverError(w, err)
 		}
 	}
-	// Determine who is challenger and who is opponent
-	// - This only applies to drawing the boards on the screen
-	// - This swap doesn't make it back into the database anywhere
-	// - "Challenger" in this sense is determining which board is on top
-	// - "Opponent" in this sense is determining which board is on bottom
-	bOne := int(b.Player1BoardID)
-	bTwo := int(b.Player2BoardID)
-	if playerID == b.Player1ID {
-		// This person is the challenger; keep things as-is
-		fmt.Println("You're the challenger...")
-		challengerBoardID = bOne
-		opponentBoardID = bTwo
-	} else if playerID == b.Player2ID {
-		// This person is the opponent but the web UI needs to display things
-		//  as if they are the challenger so swap roles
-		fmt.Println("You're the opponent so switch board positions...")
-		challengerBoardID = bTwo
-		opponentBoardID = bOne
-	}
-
-	// Get postitions for Player1's ships (by boardID)
-	c, err := app.boards.GetPositions(challengerBoardID)
+	// Get positions for Player1's ships (by boardID)
+	c, err := app.boards.GetPositions(int(b.Player1BoardID))
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
@@ -253,9 +231,8 @@ func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	// Get postitions for Player2's ships (by boardID)
-	o, err := app.boards.GetPositions(opponentBoardID)
+	// Get positions for Player2's ships (by boardID)
+	o, err := app.boards.GetPositions(int(b.Player2BoardID))
 	if err != nil {
 		if xerrors.Is(err, models.ErrMissingBoardID) {
 			app.session.Put(r, "flash", "Missing BoardID - Challenge cannot continue")
@@ -270,9 +247,11 @@ func (app *application) enterBattle(w http.ResponseWriter, r *http.Request) {
 
 	app.renderBattle(w, r, "enter.battle.page.tmpl", &templateDataBattle{
 		Battle:							b,
-		ChallengerBoardID:				bOne,
+		ChallengerID:					int(b.Player1ID),
+		ChallengerBoardID:				int(b.Player1BoardID),
 		ChallengerPositions: 			c,
-		OpponentBoardID:				bTwo,
+		OpponentID:						int(b.Player2ID),
+		OpponentBoardID:				int(b.Player2BoardID),
 		OpponentPositions:				o,
 	})
 }
@@ -307,8 +286,6 @@ func (app *application) listBattles(w http.ResponseWriter, r *http.Request) {
 
 // View battle
 func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
-	var challengerBoardID int; challengerBoardID = 0
-	var opponentBoardID int; opponentBoardID = 0
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	battleID, err := strconv.Atoi(r.URL.Query().Get(":id"))
 	if err != nil || battleID < 1 {
@@ -325,26 +302,9 @@ func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 			app.serverError(w, err)
 		}
 	}
-	// Determine who is challenger and who is opponent
-	// - This only applies to drawing the boards on the screen
-	// - This swap doesn't make it back into the database anywhere
-	// - "Challenger" in this sense is determining which board is on top
-	// - "Opponent" in this sense is determining which board is on bottom
-	bOne := int(b.Player1BoardID)
-	bTwo := int(b.Player2BoardID)
-	if playerID == b.Player1ID {
-		// This person is the challenger; keep things as-is
-		challengerBoardID = bOne
-		opponentBoardID = bTwo
-	} else if playerID == b.Player2ID {
-		// This person is the opponent but the web UI needs to display things
-		//  as if they are the challenger so swap roles
-		challengerBoardID = bTwo
-		opponentBoardID = bOne
-	}
 	// Get postitions for Player1's ships (by boardID)
-	fmt.Println("challengerBoardID:", challengerBoardID)
-	c, err := app.boards.GetPositions(challengerBoardID)
+	fmt.Println("challengerBoardID:", int(b.Player1BoardID))
+	c, err := app.boards.GetPositions(int(b.Player1BoardID))
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
@@ -353,9 +313,8 @@ func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	// Get postitions for Player2's ships (by boardID)
-	o, err := app.boards.GetPositions(opponentBoardID)
+	o, err := app.boards.GetPositions(int(b.Player2BoardID))
 	if err != nil {
 		if xerrors.Is(err, models.ErrMissingBoardID) {
 			app.session.Put(r, "flash", "Missing BoardID - Challenge cannot continue")
@@ -367,12 +326,13 @@ func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	app.renderBattle(w, r, "display.battle.page.tmpl", &templateDataBattle{
-		ChallengerBoardID:				challengerBoardID,
-		OpponentBoardID:				opponentBoardID,
 		Battle:							b,
+		ChallengerID:					int(b.Player1ID),
+		ChallengerBoardID:				int(b.Player1BoardID),
 		ChallengerPositions: 			c,
+		OpponentID:						int(b.Player2ID),
+		OpponentBoardID:				int(b.Player2BoardID),
 		OpponentPositions:				o,
 	})
 }
@@ -808,12 +768,13 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 	}
 	coordY := shipXY[len(shipXY)-1:]						// get the last character
-	pinColor, _, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY, newSecret)
+	pinColor, _, winner, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY, newSecret)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 	app.session.Put(r, "flash", fmt.Sprintf("Position (id #%s) has been updated...", pinColor))
+	if winner { app.session.Put(r, "winner", "A winner has been declared!") }
 	http.Redirect(w, r, fmt.Sprintf("/player/list/%s", pinColor), http.StatusSeeOther)
 }
 
@@ -853,33 +814,38 @@ func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
 		type JsonResponse struct {
 			Turn 			string					`json:"turn"`
 			Positions		[]*models.Position		`json:"strikes"`
-		}
-		positions, err := app.positions.List(boardID, playerID)
-		if err != nil {
-			app.serverError(w, err)
-			return
+			Winner			string					`json:"winner"`
 		}
 		var JR JsonResponse
+
 		JR.Turn = app.battles.CheckTurn(battleID, playerID)
 		if err != nil {
 			app.serverError(w, err)
 			app.errorLog.Println("Error", err.Error())
 			return
 		}
-		//fmt.Println("JR.Turn:", JR.Turn)
+		positions, err := app.positions.List(boardID, playerID)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
 		JR.Positions = positions
-		//fmt.Println("JR.Positions:", JR.Positions)
+		winner, err := app.positions.CheckWinner(playerID, boardID)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		if winner { JR.Winner = "winner" } else { JR.Winner = "chicken_dinner" }
 
 		out, err := json.Marshal(JR)
 		if err != nil {
 			app.serverError(w, err)
 			return
 		}
-		fmt.Println("Sending", string(out), "to browser")
 		app.renderJson(w, r, out)
 	} else {
 		// do nothing
-		fmt.Println("The challenger doesn't match the owner of the board or the participant in the battle...", playerID, boardID)
+		app.serverError(w, errors.New(fmt.Sprintf("The challenger (%d) doesn't match the owner of the board or the participant in this battle (%d)", playerID, boardID)))
 		return
 	}
 }
@@ -888,9 +854,10 @@ func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
 // When a player launches a strike, see if it is a hit (make pinColor=1) and record strike
 func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
 	type PlayerTurn struct {
-		Valid 			bool			`json:"Valid"`
-		PinColor		string			`json:"PinColor"`
-		ShipType		string			`json:"SunkenShip"`
+		Valid 			bool			`json:"valid"`
+		PinColor		string			`json:"pin_color"`
+		ShipType		string			`json:"sunken_ship"`
+		Winner			bool			`json:"winner"`
 	}
 
 	err := r.ParseForm()
@@ -915,7 +882,7 @@ func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			app.serverError(w, err)
 		}
-		pinColor, shipType, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY, newSecret)
+		pinColor, shipType, winner, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY, newSecret)
 		if err != nil {
 			app.infoLog.Println("Update failed for ", playerID, battleID, boardID, coordX, coordY)
 			app.errorLog.Println("Error", err.Error())
@@ -924,6 +891,7 @@ func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
 		PT.Valid = true
 		PT.PinColor = pinColor
 		PT.ShipType = shipType
+		PT.Winner = winner
 		out, err = json.Marshal(PT)
 		if err != nil {
 			app.serverError(w, err)
@@ -932,12 +900,13 @@ func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
 		app.errorLog.Println("Looks like somebody is attempting to hack or the person submitting the strike is not in sync with the database...")
 		PT.Valid = false
 		PT.PinColor = ""
+		PT.ShipType = "charlie"
+		PT.Winner = false
 		out, err = json.Marshal(PT)
 		if err != nil {
 			app.serverError(w, err)
 		}
 	}
-	fmt.Println("Sending", string(out), "to browser")
 	app.renderJson(w, r, out)
 }
 

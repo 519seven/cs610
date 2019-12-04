@@ -56,7 +56,8 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	// in sqlite3, a unique, auto-incrementing rowid is automatically created
 	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS Battles 
 		(player1ID INTEGER, player1Accepted BOOLEAN, player1BoardID INTEGER,
-		 player2ID INTEGER, player2Accepted BOOLEAN, player2BoardID INTEGER,
+		 player2ID INTEGER, player2Accepted BOOLEAN, player2BoardID INTEGER, 
+		 player1SunkenShips INTEGER, player2SunkenShips INTEGER,
 		 challengeDate DATETIME DEFAULT CURRENT_TIMESTAMP,
 		 turn INTEGER, secretTurn STRING, winner INTEGER)`)
 	stmt.Exec()
@@ -121,10 +122,17 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 
 // Pre-processing HTML/template data based on data from database
 func (app *application) preprocessBoardFromData(p []*models.Position, battleID int, csrf_token string, permissions string) template.HTML {
-	var playerID int = 0
+	var boardID int = 0
 	var pinColor string = ""
 	var tableID string = ""
-	if (permissions == "hidden") { tableID = "opponent"} else { tableID = "challenger" }
+	var toolTip string = ""
+	if (permissions == "hidden") {
+		tableID = "opponent"
+		toolTip = "These boxes represent your opponents board. Select one that is not gray (an unsuccessful strike) or red (a successful strike) to launch a missile towards your opponent."
+	} else {
+		tableID = "challenger"
+		toolTip = "These boxes show you which coordinates have been launched against you already. There is nothing for you to do on this board."
+	}
 
 	gameBoard := fmt.Sprintf("<table id=\"%s\"><th>&nbsp;</th>", tableID)
 	for _, col := range "ABCDEFGHIJ" {
@@ -143,7 +151,7 @@ func (app *application) preprocessBoardFromData(p []*models.Position, battleID i
 			var class string; class = ""
 			for _, onePosition := range p {
 				// This playerID ought to help us determine whose board these checkboxes belong to
-				if (playerID == 0) { playerID = onePosition.PlayerID; }
+				if (boardID == 0) { boardID = onePosition.ID; }
 				//if (pinColor == "" || pinColor == "0") { pinColor = onePosition.PinColor; }
 				if onePosition.CoordX == row && onePosition.CoordY == string(col) {
 					if onePosition.ShipType.Valid {
@@ -169,23 +177,22 @@ func (app *application) preprocessBoardFromData(p []*models.Position, battleID i
 					break
 				}
 			}
-			fieldName := fmt.Sprintf("%d_shipXY%d%s", playerID, row, string(col))
+			fieldName := fmt.Sprintf("%d_shipXY%d%s", boardID, row, string(col))
 			//gameBoard += fmt.Sprintf("<td id=\"%d_%s\">", playerID, fieldName)
 			gameBoard += fmt.Sprintf("<td id=\"%s_%s\" style=\"background-color:%s\">", tableID, fieldName, pinColor)
 			if permissions == "ro" {
-				fieldHTML = fmt.Sprintf("<label id=\"%s\" class=\"container\">%s<input type='checkbox' name=\"%s\" %s value=\"%s\" %s %s><span class=\"checkmark\"></span></label>", 
-					fieldName, fieldValue, fieldName, class, fieldValue, inputid, checked)
+				fieldHTML = fmt.Sprintf("<label id=\"%s\" class=\"container\">%s<input type='checkbox' name=\"%s\" %s value=\"%s\" %s %s><span class=\"checkmark\" title=\"%s\"></span></label>", 
+					fieldName, fieldValue, fieldName, class, fieldValue, inputid, checked, toolTip)
 			} else if permissions == "rw" {
 				fieldHTML = fmt.Sprintf(
 					"<label id=\"%s\" class=\"container\"><input type='text' maxlength=1 size=6 name=\"%s\" %s value=\"%s\" onclick=\"save_checkbox('%s');\" %s><span class=\"checkmark\"></span></label>", 
 					fieldName, fieldName, class, fieldValue, fieldName, inputid)
 			} else if permissions == "hidden" {
-				fieldHTML = fmt.Sprintf("<label id=\"%s\" class=\"container\"><input class=\"striker\" type='checkbox' name=\"%s\" %s %s %s %s><span class=\"checkmark\"></span></label>", 
-					fieldName, fieldName, class, onclick, inputid, checked)
+				fieldHTML = fmt.Sprintf("<label id=\"%s\" class=\"container\"><input class=\"striker\" type='checkbox' name=\"%s\" %s %s %s %s><span title=\"%s\" class=\"checkmark\"></span></label>", 
+					fieldName, fieldName, class, onclick, inputid, checked, toolTip)
 			}
 			//fmt.Println(fieldName, ":", fieldHTML)						// debug
 			gameBoard += fieldHTML + "</td>"
-			playerID = 0;
 			pinColor = "";
 		}
 		gameBoard += "</tr>"
@@ -296,14 +303,22 @@ func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Req
 	td.IsAuthenticated = app.isAuthenticated(r)
 	td.ScreenName = app.session.GetString(r, "screenName")
 	if td.ChallengerPositions != nil {
-		fmt.Println("Positions is not nil.  We should build MainGrid here...")
-		td.ChallengerGrid = app.preprocessBoardFromData(td.ChallengerPositions, td.Battle.ID, td.CSRFToken, "ro")
+		fmt.Println("Positions is not nil.  We should build MainGrid here...", td.AuthenticatedPlayerID, td.ChallengerID)
+		if td.AuthenticatedPlayerID == td.ChallengerID {
+			td.ChallengerGrid = app.preprocessBoardFromData(td.ChallengerPositions, td.Battle.ID, td.CSRFToken, "ro")
+		} else {
+			td.ChallengerGrid = app.preprocessBoardFromData(td.OpponentPositions, td.Battle.ID, td.CSRFToken, "ro")
+		}
 	} else {
 		td.ChallengerGrid = app.preprocessBoardFromRequest(r)
 	}
 	if td.OpponentPositions != nil {
-		fmt.Println("Positions is not nil.  We should build MainGrid here...")
-		td.OpponentGrid = app.preprocessBoardFromData(td.OpponentPositions, td.Battle.ID, td.CSRFToken, "hidden")
+		fmt.Println("Positions is not nil.  We should build MainGrid here...", td.AuthenticatedPlayerID, td.ChallengerID)
+		if td.AuthenticatedPlayerID == td.ChallengerID {
+			td.OpponentGrid = app.preprocessBoardFromData(td.OpponentPositions, td.Battle.ID, td.CSRFToken, "hidden")
+		} else {
+			td.OpponentGrid = app.preprocessBoardFromData(td.ChallengerPositions, td.Battle.ID, td.CSRFToken, "hidden")
+		}
 	} else {
 		td.OpponentGrid = app.preprocessBoardFromRequest(r)
 	}
