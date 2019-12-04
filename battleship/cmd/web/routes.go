@@ -30,7 +30,7 @@ func (app *application) routes() http.Handler {
 	// BATTLES
 	// display list of battles
 	mux.Get("/status/battles/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBattles))
-	// see if there are any challenges out there
+	// View challenges you may have (create a challenge under "Players")
 	mux.Get("/status/challenge", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBattles))
 	// "accept" a challenge from another player
 	mux.Post("/status/confirm/:battleID", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.confirmStatus))
@@ -46,7 +46,7 @@ func (app *application) routes() http.Handler {
 	// Enter the battle (shows board with selections that the users can click on)
 	mux.Post("/battle/enter/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.enterBattle))
 	mux.Post("/battle/strike", strikeMiddleware.Append(app.requireAuthentication).ThenFunc(app.recordStrike))
-	mux.Post("/battle/turn", strikeMiddleware.Append(app.requireAuthentication).ThenFunc(app.checkTurn))
+	//mux.Post("/battle/turn", strikeMiddleware.Append(app.requireAuthentication).ThenFunc(app.checkTurn))
 	//mux.Post("/battle/strike", dynamicMiddleware.ThenFunc(app.recordStrike))
 
 	/*
@@ -62,7 +62,7 @@ func (app *application) routes() http.Handler {
 	mux.Post("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
 	mux.Get("/board/:id", dynamicMiddleware.ThenFunc(app.displayBoard))
 	// PLAYERS
-	// Challenge a player to a battle
+	// Create a challenge; challenge an opponent
 	mux.Post("/player/challenge", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.challengePlayer))
 	mux.Get("/player/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listPlayers))
 	mux.Get("/player/update/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.updatePlayer))

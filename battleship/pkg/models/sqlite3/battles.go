@@ -1,7 +1,6 @@
 package sqlite3
 
 import (
-	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -69,7 +68,7 @@ func (m *BattleModel) CheckChallenger(player1ID, battleID, player2BoardID int) b
 
 
 // Create a new Battle - record the challenger (player1) and the challengee (player2)
-func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int) (int, error) {
+func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int, secretTurn string) (int, error) {
 	var rowid int; rowid = 0
 	var battleID int; battleID = 0
 	
@@ -104,8 +103,6 @@ func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int) (int, err
 		fmt.Println("Creating new battle...")
 		stmt = `INSERT INTO Battles (player1ID, player1Accepted, player1BoardID, player2ID, player2Accepted, turn, secretTurn) VALUES (?, ?, ?, ?, ?, ?, ?)`
 		// The opponent will always go first
-		secretTurn := make([]byte, 32)
-		_, err := rand.Read(secretTurn)
 		if err != nil {
 			return 0, err
 		}	
@@ -212,7 +209,7 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 		b := &models.Battle{}
 		err = rows.Scan(
 			&b.ID, 
-			&b.Player1ID, &b.Player1ScreenName, &b.Player1BoardName, 
+			&b.Player1ID, &b.Player1ScreenName, &b.ChallengerBoardName, 
 			&b.Player1Accepted, &b.Player2ID, &b.Player2ScreenName, 
 			&b.Player2Accepted, &b.ChallengeDate, &b.Turn)
 		if err != nil {
@@ -298,20 +295,16 @@ func (m *BattleModel) UpdateChallenge(player1 int, player2 int, player2Accepted 
 
 
 // Update turn - other player's turn
-func (m *BattleModel) UpdateTurn(player1 int, player2 int, nextTurn int, battleID int) error {
+func (m *BattleModel) UpdateTurn(player1 int, player2 int, nextTurn int, battleID int, secretTurn []byte) error {
 	// Swap the value of nextTurn
 	if nextTurn == player1 {
 		nextTurn = player2
 	} else {
 		nextTurn = player1
 	}
-	secretTurn := make([]byte, 32)
-	_, err := rand.Read(secretTurn)
-	if err != nil {
-		return err
-	}
+
 	stmt := `UPDATE Battles SET secretTurn = ?, turn = ? WHERE rowid = ?`
-	_, err = m.DB.Exec(stmt, secretTurn, nextTurn, battleID)
+	_, err := m.DB.Exec(stmt, secretTurn, nextTurn, battleID)
 	if err != nil {
 		return err
 	}

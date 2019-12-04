@@ -58,21 +58,24 @@ func (m *PositionModel) List(boardID, playerID int) ([]*models.Position, error) 
 
 
 // Update a pinColor based on player, battle, board, and coordinates - return the pinColor
-func (m *PositionModel) Update(playerID int, battleID int, boardID int, coordX int, coordY string) (string, error) {
+func (m *PositionModel) Update(playerID int, battleID int, boardID int, coordX int, coordY, secretTurn string) (string, string, error) {
 	pinColor := ""
 	positionID := -1		   // -1 means that a challenger has tried this one
-	pOne := 0
-	pTwo := 0
-	turn := 0
+	var pOne int = 0 
+	var pTwo int = 0
+	var turn int = 0
+	var sunkenShip string = ""
 
 	// Once a strike has been logged, update whose turn it is
 	stmt := `SELECT player1ID, player2ID FROM Battles WHERE rowid = ? AND (player1ID = ? OR player2ID = ?);`
-	err := m.DB.QueryRow(stmt, boardID, playerID, playerID).Scan(&pOne, &pTwo)
+	err := m.DB.QueryRow(stmt, battleID, playerID, playerID).Scan(&pOne, &pTwo)
 	// Find out which player this is
 	if pOne == playerID {
+		fmt.Printf("Player1 (%d) just launched. Strike will be recorded and Player2 will go next...", pOne)
 		// Then player1 just moved.  We'll want to update Turn to be player2
 		turn = pTwo
 	} else {
+		fmt.Printf("Player2 (%d) just launched. Strike will be recorded and Player1 will go next...", pTwo)
 		turn = pOne
 	}
 
@@ -86,21 +89,57 @@ func (m *PositionModel) Update(playerID int, battleID int, boardID int, coordX i
 			// If we don't have a hit then add this position w/ a gray pinColor
 			pinColor = "gray"
 			stmt = `INSERT INTO Positions (playerID, boardID, coordX, coordY, pinColor) VALUES (?, ?, ?, ?, ?);
-					UPDATE Battles SET turn = ? WHERE rowid = ? AND (player1ID = ? OR player2ID = ?);`
-			m.DB.Exec(stmt, playerID, boardID, coordX, coordY, pinColor, turn, battleID, playerID, playerID)
+					UPDATE Battles SET turn = ?, secretTurn = ? WHERE rowid = ? AND (player1ID = ? OR player2ID = ?);`
+			_, err = m.DB.Exec(stmt, playerID, boardID, coordX, coordY, pinColor, turn, secretTurn, battleID, playerID, playerID)
+			if err != nil {
+				return "", "", err
+			}
 		} else {
 			// This is a sql error; bail
 			fmt.Println("Error when querying for existing position:", stmt)
-			return "", err	
+			return "", "", err	
 		}
 	} else {
 		// Err is not nil and rows are not empty - we have a match!
 		// - This means it's a strike
 		pinColor = "red"
 		stmt = `UPDATE Positions SET pinColor = ? WHERE boardID = ? AND coordX = ? AND coordY = ?;
-				UPDATE Battles SET turn = ? WHERE rowid = ? AND (player1ID = ? OR player2ID = ?);`
-		m.DB.Exec(stmt, pinColor, boardID, coordX, coordY, turn, battleID, playerID, playerID)
+				UPDATE Battles SET turn = ?, secretTurn = ? WHERE rowid = ? AND (player1ID = ? OR player2ID = ?);`
+		_, err = m.DB.Exec(stmt, pinColor, boardID, coordX, coordY, turn, secretTurn, battleID, playerID, playerID)
+		if err != nil {
+			return "", "", err
+		}
+		// Find out if a ship has been sunk...
+		var pinCount int = 0
+		stmt = `SELECT COUNT(*), s.shipType 
+				FROM Positions p 
+				LEFT OUTER JOIN Ships s ON s.rowid = p.shipID 
+				WHERE boardID = ? AND pinColor = 'red' AND shipType IN 
+				(SELECT s.shipType 
+					FROM Positions p 
+					LEFT OUTER JOIN Ships s ON s.rowid = p.shipid 
+					WHERE p.coordX = ? AND p.coordy = ?)`
+		// This SQL statement will give us a count of the number of ships that have red pins
+		// - If the number of red pins that are present matches the maximum number for that ship
+		//   then, the ship has been sunk and we return the ship name
+		err := m.DB.QueryRow(stmt, boardID, coordX, coordY).Scan(&pinCount, &sunkenShip)
+		if err != nil {
+			return "", "", err
+		}
+		switch sunkenShip {
+		case "battleship":
+			if pinCount != 4 { sunkenShip = "" }
+		case "carrier":
+			if pinCount != 5 { sunkenShip = "" }
+		case "cruiser":
+			if pinCount != 3 { sunkenShip = "" }
+		case "destroyer":
+			if pinCount != 2 { sunkenShip = "" }
+		case "submarine":
+			if pinCount != 3 { sunkenShip = "" }
+		default:
+			fmt.Println("We got a row from the database but none of the shipTypes matched???")
+		}
 	}
-
-	return pinColor, nil
+	return pinColor, sunkenShip, nil
 }

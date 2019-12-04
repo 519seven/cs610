@@ -11,6 +11,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"database/sql"
 	"fmt"
 	"html/template"
@@ -57,7 +58,7 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		(player1ID INTEGER, player1Accepted BOOLEAN, player1BoardID INTEGER,
 		 player2ID INTEGER, player2Accepted BOOLEAN, player2BoardID INTEGER,
 		 challengeDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-		 turn INTEGER, secretTurn STRING)`)
+		 turn INTEGER, secretTurn STRING, winner INTEGER)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
 		(boardName TEXT, playerID INTEGER, 
@@ -120,9 +121,12 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 
 // Pre-processing HTML/template data based on data from database
 func (app *application) preprocessBoardFromData(p []*models.Position, battleID int, csrf_token string, permissions string) template.HTML {
-	var playerID int; playerID = 0
+	var playerID int = 0
+	var pinColor string = ""
+	var tableID string = ""
+	if (permissions == "hidden") { tableID = "opponent"} else { tableID = "challenger" }
 
-	gameBoard := "<table><th>&nbsp;</th>"
+	gameBoard := fmt.Sprintf("<table id=\"%s\"><th>&nbsp;</th>", tableID)
 	for _, col := range "ABCDEFGHIJ" {
 		gameBoard += fmt.Sprintf("<th>%s</th>", string(col))
 	}
@@ -139,9 +143,8 @@ func (app *application) preprocessBoardFromData(p []*models.Position, battleID i
 			var class string; class = ""
 			for _, onePosition := range p {
 				// This playerID ought to help us determine whose board these checkboxes belong to
-				if playerID == 0 {
-					playerID = onePosition.PlayerID
-				}
+				if (playerID == 0) { playerID = onePosition.PlayerID; }
+				//if (pinColor == "" || pinColor == "0") { pinColor = onePosition.PinColor; }
 				if onePosition.CoordX == row && onePosition.CoordY == string(col) {
 					if onePosition.ShipType.Valid {
 						if strings.ToUpper(onePosition.ShipType.String) == "CRUISER" {
@@ -155,30 +158,35 @@ func (app *application) preprocessBoardFromData(p []*models.Position, battleID i
 						checked = "checked"
 						onclick = "onclick=\"return false;\""
 						class = fmt.Sprintf("class='%sBattleBoard' ", onePosition.PinColor)
+						pinColor = onePosition.PinColor;
 					} else {
-						checked = ""
-						onclick = ""
-						class = ""
-						inputid = ""
+						checked = "";
+						onclick = "";
+						class = "";
+						inputid = "";
+						pinColor = "";
 					}
 					break
 				}
 			}
-			gameBoard += "<td>"
-			fieldName := fmt.Sprintf("shipXY%d%s", row, string(col))
+			fieldName := fmt.Sprintf("%d_shipXY%d%s", playerID, row, string(col))
+			//gameBoard += fmt.Sprintf("<td id=\"%d_%s\">", playerID, fieldName)
+			gameBoard += fmt.Sprintf("<td id=\"%s_%s\" style=\"background-color:%s\">", tableID, fieldName, pinColor)
 			if permissions == "ro" {
-				fieldHTML = fmt.Sprintf("<label class=\"container\">%s<input type='checkbox' name=\"%d_%s\" %s value=\"%s\" %s %s><span class=\"checkmark\"></span></label>", 
-					fieldValue, playerID, fieldName, class, fieldValue, inputid, checked)
+				fieldHTML = fmt.Sprintf("<label id=\"%s\" class=\"container\">%s<input type='checkbox' name=\"%s\" %s value=\"%s\" %s %s><span class=\"checkmark\"></span></label>", 
+					fieldName, fieldValue, fieldName, class, fieldValue, inputid, checked)
 			} else if permissions == "rw" {
 				fieldHTML = fmt.Sprintf(
-					"<label class=\"container\"><input type='text' maxlength=1 size=6 name=\"%d_%s\" %s value=\"%s\" onclick=\"save_checkbox('%s');\" %s><span class=\"checkmark\"></span></label>", 
-					playerID, fieldName, class, fieldValue, fieldName, inputid)
+					"<label id=\"%s\" class=\"container\"><input type='text' maxlength=1 size=6 name=\"%s\" %s value=\"%s\" onclick=\"save_checkbox('%s');\" %s><span class=\"checkmark\"></span></label>", 
+					fieldName, fieldName, class, fieldValue, fieldName, inputid)
 			} else if permissions == "hidden" {
-				fieldHTML = fmt.Sprintf("<label class=\"container\"><input class=\"striker\" type='checkbox' name=\"%d_%s\" %s %s %s %s><span class=\"checkmark\"></span></label>", 
-					playerID, fieldName, class, onclick, inputid, checked)
+				fieldHTML = fmt.Sprintf("<label id=\"%s\" class=\"container\"><input class=\"striker\" type='checkbox' name=\"%s\" %s %s %s %s><span class=\"checkmark\"></span></label>", 
+					fieldName, fieldName, class, onclick, inputid, checked)
 			}
 			//fmt.Println(fieldName, ":", fieldHTML)						// debug
 			gameBoard += fieldHTML + "</td>"
+			playerID = 0;
+			pinColor = "";
 		}
 		gameBoard += "</tr>"
 	}
@@ -281,6 +289,7 @@ func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Req
 	} else {
 		td.ActiveBoardID = 0
 	}
+	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")
 	td.CSRFToken = nosurf.Token(r)
 	td.CurrentYear = time.Now().Year()
 	td.Flash = app.session.PopString(r, "flash")
@@ -679,4 +688,31 @@ func (app *application) clientError(w http.ResponseWriter, status int) {
 // - A convenience wrapper around clientError
 func (app *application) notFound(w http.ResponseWriter) {
 	app.clientError(w, http.StatusNotFound)
+}
+
+// ----------------------------------------------------------------------------
+// HELPERS
+
+// Random byte string
+// Generate a random string n bytes long using these two functions
+func (app *application) GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	// Note that err == nil only if we read len(b) bytes.
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+func (app *application) GenerateRandomString(n int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	bytes, err := app.GenerateRandomBytes(n)
+	if err != nil {
+		return "", err
+	}
+	for i, b := range bytes {
+		bytes[i] = letters[b%byte(len(letters))]
+	}
+	return string(bytes), nil
 }

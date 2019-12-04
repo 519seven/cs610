@@ -29,6 +29,7 @@ type templateDataAbout struct {
 // Battle (the battle containing two boards)
 type templateDataBattle struct {
 	ActiveBoardID			int
+	AuthenticatedPlayerID	int
 	CSRFToken				string
 	CurrentYear 			int
 	Flash					string

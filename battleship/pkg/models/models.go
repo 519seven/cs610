@@ -24,13 +24,12 @@ type Battle struct {
 	Player1ID 				int
 	Player1ScreenName		string
 	Player1BoardID			int
-	Player1BoardName		sql.NullString
 	Player1Accepted			bool
 	Player2ID 				int
 	Player2ScreenName		string
 	Player2BoardID			int
-	Player2BoardName		sql.NullString
 	Player2Accepted			bool
+	ChallengerBoardName		sql.NullString
 	ChallengeDate			time.Time
 	Turn      				sql.NullInt64
 }

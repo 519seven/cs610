@@ -15,7 +15,7 @@
                     {{.ChallengerGrid}}
                 </td>
             </tr>
-            <tr><td>Your Opponent's Board</td><tr>
+            <tr><td>Your Opponent's Board<br><span id='turn_indicator' style="width:100%; align:right; visibility:visible;">Loading...</span></td><tr>
             <tr>
                 <td>
                     <form id='opponentBoard'>
@@ -43,8 +43,13 @@
 	  var continuePolling = true;
 	  var pageData;
 	  setTimeout(function() {
+        {{ if (and .AuthenticatedPlayerID .ChallengerID) }}
+        bid = {{.ChallengerBoardID}};
+        {{ else }}
+        bid = {{.OpponentBoardID}};
+        {{ end }}
 	    $.ajax(
-            {url: "/status/strikes/{{.Battle.ID}}/{{.ChallengerBoardID}}",
+            {url: "/status/strikes/{{.Battle.ID}}/"+bid,
             type: "GET",
             dataType: 'json',
 			success: function(data) {
@@ -54,19 +59,31 @@
               // Uncheck all checkboxes
               for (var rows = 0; rows < 10; rows++) {
                   for (var cols = 0; cols < 10; cols++) {
-                      $("input[name='{{.ChallengerBoardID}}_shipXY"+rows+String.fromCharCode(65+cols)+"']:checkbox").prop('checked', false);
+                      $("input[name='"+bid+"_shipXY"+rows+String.fromCharCode(65+cols)+"']:checkbox").prop('checked', false);
                       //console.log('unchecking shipXY'+rows+String.fromCharCode(97+cols));
                   }
               }
               for (var i = 0; i < data.strikes.length; i++) {
                 var obj = data.strikes[i];
+                var fn = bid+"_shipXY"+obj.CoordX+obj.CoordY;
                 // make sure existing checkboxes are checked to protect ourselves from some nonsense (and to pick up new strikes)
-                $("input[name='{{.ChallengerBoardID}}_shipXY"+obj.CoordX+obj.CoordY+"']:checkbox").prop('checked', true);
-                console.log('checking {{.ChallengerBoardID}}_shipXY'+obj.CoordX+obj.CoordY);
+                $("input[name='"+fn+"']:checkbox").prop('checked', true);
+                var td_id = "challenger_"+fn;
+                console.log("checking "+td_id);
+                document.getElementById(td_id).style.backgroundColor=obj.PinColor;
               }
               // Update turn
               $('input[type=hidden]#secretTurn').val(data.turn);
               console.log("secretTurn has been defined as "+data.turn);
+              if (data.turn != "") { 
+                console.log("It's your turn!"); 
+                document.getElementById('turn_indicator').innerHTML = 'Your turn!';
+                document.getElementById('turn_indicator').style.visibility = 'visible';
+              } else {
+                console.log("Waiting for the other player...");
+                document.getElementById('turn_indicator').innerHTML = 'Waiting for your opponent to make their move...';
+                document.getElementById('turn_indicator').style.visibility = 'visible';
+              }
             },
             error: function(request,error) {console.log("no change")},
             dataType: "json",
@@ -86,30 +103,51 @@
     }
     $(".striker").click(
       function() {
+        var misses = ["Plop! Nothing but water.", "Pfffft! Maybe next time.", "Dang :( Another miss."]
+        var missileMiss = misses[Math.floor(Math.random() * misses.length)];
+        var hits = ["KABOOM! Your aim was spot on!", "BOOM! Got 'em!", "YES! Successful strike!"]
+        var missileHit = hits[Math.floor(Math.random() * hits.length)];
         var fieldName= $(this).attr("name");
         nameProper = fieldName.substr(2, fieldName.length-1);
         var coX = nameProper.slice(6, nameProper.length-1);
+        //alert(coX);
         var coY = nameProper.slice(nameProper.length-1);
         var st = $('input[type=hidden]#secretTurn').val();
-        alert(st+"|"+$("input[name='"+fieldName+"']:checkbox").prop('checked'));
-        if (st == "uninitialized") { alert("Initializing...please wait"); } else {
+        //alert(st+"|"+$("input[name='"+fieldName+"']:checkbox").prop('checked'));
+        if (st == "uninitialized") { 
+          alert("Initializing...please wait");
+          $("input[name='"+fieldName+"']:checkbox").prop('checked', false);
+        } else {
           //alert($("input[name='"+fieldName+"']:checkbox").prop('checked'));
-          if (check_turn(st) && $("input[name='"+fieldName+"']:checkbox").prop('checked')) {
+          if ($("input[name='"+fieldName+"']:checkbox").prop('checked')) {
             if (confirm("Send strike to "+coX+" "+coY+"?")) {
               console.log("Sending strike!");
               $.ajax({
                 type: "post",
                 url: "/battle/strike",
-                data: {coordX: coX, coordY: coY, boardID: {{.OpponentBoardID}}, battleID: {{.Battle.ID}}, csrf_token: {{.CSRFToken}}},
+                data: {coordX: coX, coordY: coY, secretTurn: st, boardID: {{.OpponentBoardID}}, battleID: {{.Battle.ID}}, csrf_token: {{.CSRFToken}}},
                 success: function(data) {
-                  alert("Missile launched successfully...");
-                  if ( data.includes("/login") && data.includes("<html>") ) {
-                    // If login page is returned to user, redirect (ideally handle this on server)
-                    alert("Session is no longer active!\nYou must log in again.\nRedirecting...");
-                    response.redirect("/login");
+                  if (data.Valid) {
+                    alert("Missile launched successfully...");
+                    //if ( data.includes("/login") && data.includes("<html>") ) {
+                      // If login page is returned to user, redirect (ideally handle this on server)
+                      //alert("Session is no longer active!\nYou must log in again.\nRedirecting...");
+                      //response.redirect("/login");
+                    //}
+                    //alert("Status: "+data.PinColor);
+                    if (data.PinColor == "red") {
+                        alert(missileHit);
+                    } else if (data.PinColor == "gray") {
+                        alert(missileMiss);
+                    }
+                    document.getElementById("opponent_"+fieldName).style.backgroundColor=data.PinColor;
+                    //if (data.SunkenShip != "") {
+                    //    alert("You've sunk their "+data.SunkenShip+"!");
+                    //}
+                  } else {
+                    alert("Please wait your turn");
+                    $("input[name='"+fieldName+"']:checkbox").prop('checked', false);
                   }
-                  alert("Status: "+data);
-                  $("#container").html(data);
                 },
                 error: function(data) { alert("Strike failed..."); },
                 complete: function(data) { console.log("Strike has been completed"); }
