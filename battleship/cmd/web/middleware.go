@@ -66,7 +66,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		//fmt.Println("checking for authenticatedPlayerID")					// debug
 		exists := app.session.Exists(r, "authenticatedPlayerID")
 		if !exists {
-			fmt.Println("authenticatedPlayerID does not exist")
+			//fmt.Println("authenticatedPlayerID does not exist")			// debug
 			next.ServeHTTP(w, r)
 			return
 		}

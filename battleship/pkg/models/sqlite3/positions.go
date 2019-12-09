@@ -16,32 +16,39 @@ type PositionModel struct {
 
 // Check the Battles board to see if one of the players has 5 sunken ships
 func (m *PositionModel) CheckWinner(playerID, battleID int) (bool, error) {
-	var pOne int = 0
-	var pTwo int = 0
-	var numberOfShipsSunk int = 0
+	var ss1 int = 0
+	var ss2 int = 0
 
-	stmt := `SELECT player1ID, player2ID FROM Battles WHERE rowid = ? AND (player1ID = ? OR player2ID = ?)`
-	err := m.DB.QueryRow(stmt, battleID, playerID).Scan(&pOne, &pTwo)
+	// Get player1SunkenShips count
+	stmt := `SELECT player1SunkenShips, player2SunkenShips FROM BATTLES WHERE rowid = ? AND (player1ID = ? OR player2ID = ?)`
+	err := m.DB.QueryRow(stmt, battleID, playerID, playerID).Scan(&ss1, &ss2)
 	if err != nil {
 		return false, nil
 	}
-	if pOne == playerID {
-		// Get player1SunkenShips count
-		stmt = `SELECT player1SunkenShips FROM BATTLES WHERE rowid = ? AND player1ID = ?`
-		err = m.DB.QueryRow(stmt, battleID, playerID).Scan(&numberOfShipsSunk)
+	// See if either player has 5 ships...if they do, we should already have a winner
+	// - if a winner isn't already logged, then log it and return true
+	if ss1 == 5 || ss2 == 5 {
+		var winner int = 0
+		// If we have a winner, then update the database with their ID
+		stmt := `SELECT winner FROM Battles WHERE rowid = ?`		// there can be only one winner
+		err := m.DB.QueryRow(stmt, battleID).Scan(&winner)
 		if err != nil {
-			return false, nil
+			fmt.Println(err.Error())
+			//return false, nil
 		}
-	} else if pTwo == playerID {
-		// Get player2SunkenShips count
-		stmt = `SELECT player2SunkenShips FROM BATTLES WHERE rowid = ? AND player2ID = ?`
-		err = m.DB.QueryRow(stmt, battleID, playerID).Scan(&numberOfShipsSunk)
-		if err != nil {
+		if winner != 0 {
+			fmt.Println("We have a winner (already)!")
+			// if we already have a winner, then the person who launched another missile will get no satisfaction
 			return false, nil
+		} else {
+			fmt.Println("Updating database with first winner!")
+			stmt = `UPDATE Battles SET winner = ? WHERE rowid = ?`
+			_, err = m.DB.Exec(stmt, playerID, battleID)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+			return true, nil
 		}
-	}
-	if numberOfShipsSunk == 5 {
-		return true, nil
 	}
 	return false, nil
 }
@@ -96,7 +103,7 @@ func (m *PositionModel) List(boardID, playerID int) ([]*models.Position, error) 
 // - Query player, battle, board, and coordinates
 // - Return the pinColor and shipType (if sunk)
 // - Update whose turn it is
-func (m *PositionModel) Update(playerID int, battleID int, boardID int, coordX int, coordY, secretTurn string) (string, string, bool, error) {
+func (m *PositionModel) Update(playerID int, playerTakingTheirTurn int, battleID int, boardID int, coordX int, coordY, secretTurn string) (string, string, bool, error) {
 	pinColor := ""
 	positionID := -1
 	var pOne int = 0 
@@ -106,17 +113,18 @@ func (m *PositionModel) Update(playerID int, battleID int, boardID int, coordX i
 	var sunkenShipSQL string = ""
 	var winner bool = false
 
+	// See if playerTakingTheirTurn is player1 or player2
 	stmt := `SELECT player1ID, player2ID FROM Battles WHERE rowid = ? AND (player1ID = ? OR player2ID = ?);`
 	err := m.DB.QueryRow(stmt, battleID, playerID, playerID).Scan(&pOne, &pTwo)
 	// Find out which player this is
-	if pOne == playerID {
-		fmt.Printf("Player1 (%d) just launched. Strike will be recorded and Player2 will go next...", pOne)
-		// Then player1 just moved.  We'll want to update Turn to be player2
-		sunkenShipSQL = `UPDATE Battles SET Player1SunkenShips = Player1SunkenShips +1 WHERE rowid = ?`
+	if pOne == playerTakingTheirTurn {
+		fmt.Printf("Player1 (%d) just launched. Strike will be recorded and Player2 will go next...\n", pOne)
+		// Then player1 just went; if they ended with a ship strike, we'll want to update the number of sunken ships the other player has
+		sunkenShipSQL = `UPDATE Battles SET Player2SunkenShips = Player2SunkenShips +1 WHERE rowid = ?`
 		turn = pTwo
 	} else {
-		fmt.Printf("Player2 (%d) just launched. Strike will be recorded and Player1 will go next...", pTwo)
-		sunkenShipSQL = `UPDATE Battles SET Player2SunkenShips = Player2SunkenShips +1 WHERE rowid = ?`
+		fmt.Printf("Player2 (%d) just launched. Strike will be recorded and Player1 will go next...\n", pTwo)
+		sunkenShipSQL = `UPDATE Battles SET Player1SunkenShips = Player1SunkenShips +1 WHERE rowid = ?`
 		turn = pOne
 	}
 
@@ -137,7 +145,7 @@ func (m *PositionModel) Update(playerID int, battleID int, boardID int, coordX i
 			}
 		} else {
 			// This is a sql error; bail
-			fmt.Println("Error when querying for existing position:", stmt)
+			//fmt.Println("Error when querying for existing position:", stmt)
 			return "", "", false, err	
 		}
 	} else {
@@ -158,12 +166,12 @@ func (m *PositionModel) Update(playerID int, battleID int, boardID int, coordX i
 				WHERE boardID = ? AND pinColor = 'red' AND shipType IN 
 				(SELECT s.shipType 
 					FROM Positions p 
-					LEFT OUTER JOIN Ships s ON s.rowid = p.shipid 
-					WHERE p.coordX = ? AND p.coordy = ?)`
+					LEFT OUTER JOIN Ships s ON s.rowid = p.shipID 
+					WHERE p.coordX = ? AND p.coordy = ? AND boardID = ?)`
 		// This SQL statement will give us a count of the number of ships that have red pins
 		// - If the number of red pins that are present matches the maximum number for that ship
 		//   then, the ship has been sunk and we return the ship name
-		err := m.DB.QueryRow(stmt, boardID, coordX, coordY).Scan(&pinCount, &sunkenShip)
+		err := m.DB.QueryRow(stmt, boardID, coordX, coordY, boardID).Scan(&pinCount, &sunkenShip)
 		if err != nil {
 			return "", "", false, err
 		}
@@ -183,8 +191,10 @@ func (m *PositionModel) Update(playerID int, battleID int, boardID int, coordX i
 		}
 		if pinCount > 0 && sunkenShip != "" {
 			// Update this player's sunken ship counter
+			fmt.Println("Updating sunken ship counter")
 			_, err := m.DB.Exec(sunkenShipSQL, battleID)
 			if err != nil {
+				fmt.Println(err.Error())
 				return pinColor, sunkenShip, winner, errors.New("Unable to update sunkenShip counter")
 			}
 			winner, err := m.CheckWinner(playerID, battleID)

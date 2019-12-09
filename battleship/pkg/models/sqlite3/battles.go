@@ -70,8 +70,8 @@ func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int, secretTur
 	var rowid int; rowid = 0
 	var battleID int; battleID = 0
 	
-	fmt.Println("Currently, only one game per challenger/challengee pair is supported at a time.")
-	fmt.Println("Checking to see if there is already a challenge out there...")
+	//fmt.Println("Currently, only one game per challenger/challengee pair is supported at a time.")
+	//fmt.Println("Checking to see if there is already a challenge out there...")
 	stmt := `SELECT rowid FROM Battles WHERE player1ID = ? AND player2ID = ? LIMIT 0, 1`
 	rows, err := m.DB.Query(stmt, player1ID, player2ID)
 	if err != nil {
@@ -82,9 +82,9 @@ func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int, secretTur
 	for rows.Next() {
 		err := rows.Scan(&rowid)
 		if err != nil {
-			fmt.Println("ERROR - While retrieving battleID:", err)
+			//fmt.Println("ERROR - While retrieving battleID:", err)
 		} else {
-			fmt.Println("INFO - Found a pre-existing battle for this challenger/challengee pair...")
+			//fmt.Println("INFO - Found a pre-existing battle for this challenger/challengee pair...")
 			battleID = int(rowid)
 		}
 	}
@@ -94,11 +94,11 @@ func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int, secretTur
 		if err != nil {
 			return 0, err
 		}
-		fmt.Println("INFO - Battle has been updated with fresh information...")
+		//fmt.Println("INFO - Battle has been updated with fresh information...")
 		return int(battleID), nil
 	} else {
-		fmt.Println("Battle between these two players was not found.")
-		fmt.Println("Creating new battle...")
+		//fmt.Println("Battle between these two players was not found.")
+		//fmt.Println("Creating new battle...")
 		stmt = `INSERT INTO Battles (player1ID, player1Accepted, player1BoardID, player2ID, player2Accepted, turn, secretTurn) VALUES (?, ?, ?, ?, ?, ?, ?)`
 		// The opponent will always go first
 		if err != nil {
@@ -128,8 +128,8 @@ func (m *BattleModel) Get(playerID, battleID int) (*models.Battle, error) {
 				FROM Battles as b
 				JOIN Players as p1 ON p1.rowid = b.player1ID
 				JOIN Players as P2 ON p2.rowid = b.player2ID
-				WHERE b.player1ID = ? OR b.player2ID = ? AND b.rowid = ?`
-	fmt.Println("battles get stmt:", stmt)
+				WHERE (b.player1ID = ? OR b.player2ID = ?) AND b.rowid = ?`
+	//fmt.Println("battles get stmt:", stmt, "|", playerID, "|", playerID, "|", battleID)
 	err := m.DB.QueryRow(stmt, playerID, playerID, battleID).Scan(
 		&b.ID, &b.Title, 
 		&b.Player1ID, &b.Player1ScreenName, &b.Player1BoardID, 
@@ -193,10 +193,10 @@ func (m *BattleModel) GetChallenges(rowid int) ([]*models.Battle, error) {
 	LEFT OUTER JOIN Players p4 ON p4.rowid = b2.player1ID 
 	WHERE b2.player2ID = ?;
 	`
-	fmt.Println("The big sql stmt:", stmt)
+	//fmt.Println("The big sql stmt:", stmt)
 	rows, err := m.DB.Query(stmt, rowid, rowid)
 	if err != nil {
-		fmt.Println("The big sql stmt:", stmt, err.Error())
+		//fmt.Println("The big sql stmt:", stmt, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -259,13 +259,14 @@ func (m *BattleModel) GetOpen(rowid, battleID int) ([]*models.Battle, error) {
 
 // Just ask the database whose turn it is
 // - The database will return a secret key representing player1 or player2
-func (m *BattleModel) CheckTurn(battleID, playerID int) string {
-	var secretTurn string
+func (m *BattleModel) CheckTurn(battleID, playerID int) (int, string) {
+	var turn int = 0
+	var secretTurn string = ""
 
-	stmt := `SELECT secretTurn FROM Battles WHERE rowid = ? AND turn = ?`
-	_ = m.DB.QueryRow(stmt, battleID, playerID).Scan(&secretTurn)
-	fmt.Println("secretTurn:", secretTurn)
-	return secretTurn
+	stmt := `SELECT turn, secretTurn FROM Battles WHERE rowid = ? AND turn = ?`
+	_ = m.DB.QueryRow(stmt, battleID, playerID).Scan(&turn, &secretTurn)
+	//fmt.Println("secretTurn:", secretTurn)
+	return turn, secretTurn
 }
 
 

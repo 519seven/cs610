@@ -12,12 +12,7 @@
 			<label class='error'>{{.}}</label>
 		{{end}}
 		<input type=text size=32 name=screenName maxlength=32 value='{{.Get "screenName"}}'>
-		<label><br/>E-mail Address</label>
-		{{with .Errors.Get "emailAddress"}}
-			<label class='error'>{{.}}</label>
-		{{end}}
-		<input type=text size=52 name=emailAddress maxlength=52 value='{{.Get "emailAddress"}}'>
-		<label><br/>Password (max length 32)</label>
+		<label><br/>Password (requirement: 8-32 characters)</label>
 		{{with .Errors.Get "password"}}
 			<label class='error'>{{.}}</label>
 		{{end}}
@@ -27,7 +22,7 @@
 			<label class='error'></label>
 		{{end}}
 		<input type=password size=32 name=passwordConf maxlength=32 value=''>
-		<input type=submit name="Add Player">
+		<input type=submit name="Add Player" value="Sign me up!">
 	</div>
 	{{end}}
 </form>

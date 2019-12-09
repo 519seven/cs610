@@ -82,8 +82,9 @@ func (m *PlayerModel) Insert(screenName string, emailAddress string, password st
 	result, err := m.DB.Exec(stmt, screenName, emailAddress, hashedPassword, time.Now(), 0, time.Now())
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed:") {
-			// Our unique requirement for email address has been violated
-			return 0, models.ErrDuplicateEmail
+			// Our unique requirement for screen name has been violated
+			fmt.Println(err.Error())
+			return 0, models.ErrDuplicateScreenName
 		} else {
 			return 0, err
 		}
@@ -98,7 +99,7 @@ func (m *PlayerModel) Insert(screenName string, emailAddress string, password st
 
 // list players
 func (m *PlayerModel) List(rowid int, status string) ([]*models.Player, error) {
-	stmt := `SELECT rowid, screenName, emailAddress, loggedIn, inBattle, created, lastLogin FROM Players`
+	stmt := `SELECT rowid, screenName, loggedIn, inBattle, created, lastLogin FROM Players`
 	if status == "loggedIn" {
 		stmt += " WHERE loggedIn = 1"
 		if rowid != 0 {
@@ -107,7 +108,7 @@ func (m *PlayerModel) List(rowid int, status string) ([]*models.Player, error) {
 	} else if rowid != 0 {
 		stmt += " WHERE rowid != ?"
 	}
-	fmt.Println("[players.List 1]", stmt)
+	//fmt.Println("[players.List 1]", stmt)
 	rows, err := m.DB.Query(stmt, rowid)
 	if err != nil {
 		return nil, err
@@ -118,9 +119,9 @@ func (m *PlayerModel) List(rowid int, status string) ([]*models.Player, error) {
 
 	for rows.Next() {
 		s := &models.Player{}
-		err = rows.Scan(&s.ID, &s.ScreenName, &s.EmailAddress, &s.LoggedIn, &s.InBattle, &s.Created, &s.LastLogin)
+		err = rows.Scan(&s.ID, &s.ScreenName, &s.LoggedIn, &s.InBattle, &s.Created, &s.LastLogin)
 		if err != nil {
-			fmt.Println("[players.List 2] Error:", err.Error())
+			//fmt.Println("[players.List 2] Error:", err.Error())
 			return nil, err
 		}
 		players = append(players, s)

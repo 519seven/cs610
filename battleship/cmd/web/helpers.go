@@ -57,16 +57,16 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS Battles 
 		(player1ID INTEGER, player1Accepted BOOLEAN, player1BoardID INTEGER,
 		 player2ID INTEGER, player2Accepted BOOLEAN, player2BoardID INTEGER, 
-		 player1SunkenShips INTEGER, player2SunkenShips INTEGER,
+		 player1SunkenShips INTEGER DEFAULT 0, player2SunkenShips INTEGER DEFAULT 0,
 		 challengeDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-		 turn INTEGER, secretTurn STRING, winner INTEGER)`)
+		 turn INTEGER, secretTurn STRING, winner INTEGER DEFAULT 0)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Boards 
 		(boardName TEXT, playerID INTEGER, 
 		 created DATETIME DEFAULT CURRENT_TIMESTAMP, isChosen BOOLEAN)`)
 	stmt.Exec()
 	stmt, _ = db.Prepare(`CREATE TABLE IF NOT EXISTS Players 
-		(screenName TEXT, emailAddress TEXT NOT NULL UNIQUE, 
+		(screenName TEXT NOT NULL UNIQUE, emailAddress TEXT, 
 		 hashedPassword TEXT, created DATETIME, loggedIn BOOLEAN, 
 		 inBattle BOOLEAN, lastLogin DATETIME)`)
 	stmt.Exec()
@@ -161,7 +161,7 @@ func (app *application) preprocessBoardFromData(p []*models.Position, battleID i
 							fieldValue = strings.ToUpper(onePosition.ShipType.String[0:1])
 						}
 					}
-					fmt.Println("pinColor:", onePosition.PinColor)
+					//fmt.Println("pinColor:", onePosition.PinColor)
 					if onePosition.PinColor != "" && onePosition.PinColor != "0" {
 						checked = "checked"
 						onclick = "onclick=\"return false;\""
@@ -271,7 +271,7 @@ func (app *application) renderAbout(w http.ResponseWriter, r *http.Request, name
 		app.session.Remove(r, "authenticatedPlayerID")
 		app.session.Remove(r, "boardID")
 		app.session.Remove(r, "battleID")
-		fmt.Println("Session information has been removed...")
+		//fmt.Println("Session information has been removed...")			// debug
 	}
 
 	if err != nil {
@@ -291,7 +291,7 @@ func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Req
 	// Default the boardID to 0
 	activeBoardID := app.session.GetInt(r, "boardID")
 	if activeBoardID > 0 {
-		fmt.Println("activeBoardID = ", activeBoardID)
+		//fmt.Println("activeBoardID = ", activeBoardID)
 		td.ActiveBoardID = app.session.GetInt(r, "boardID")
 	} else {
 		td.ActiveBoardID = 0
@@ -303,7 +303,7 @@ func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Req
 	td.IsAuthenticated = app.isAuthenticated(r)
 	td.ScreenName = app.session.GetString(r, "screenName")
 	if td.ChallengerPositions != nil {
-		fmt.Println("Positions is not nil.  We should build MainGrid here...", td.AuthenticatedPlayerID, td.ChallengerID)
+		//fmt.Println("Positions is not nil.  We should build MainGrid here...", td.AuthenticatedPlayerID, td.ChallengerID)
 		if td.AuthenticatedPlayerID == td.ChallengerID {
 			td.ChallengerGrid = app.preprocessBoardFromData(td.ChallengerPositions, td.Battle.ID, td.CSRFToken, "ro")
 		} else {
@@ -313,7 +313,7 @@ func (app *application) addDefaultDataBattle(td *templateDataBattle, r *http.Req
 		td.ChallengerGrid = app.preprocessBoardFromRequest(r)
 	}
 	if td.OpponentPositions != nil {
-		fmt.Println("Positions is not nil.  We should build MainGrid here...", td.AuthenticatedPlayerID, td.ChallengerID)
+		//fmt.Println("Positions is not nil.  We should build MainGrid here...", td.AuthenticatedPlayerID, td.ChallengerID)
 		if td.AuthenticatedPlayerID == td.ChallengerID {
 			td.OpponentGrid = app.preprocessBoardFromData(td.OpponentPositions, td.Battle.ID, td.CSRFToken, "hidden")
 		} else {
@@ -354,7 +354,7 @@ func (app *application) addDefaultDataBattles(td *templateDataBattles, r *http.R
 	// Default the boardID to 0
 	activeBoardID := app.session.GetInt(r, "boardID")
 	if activeBoardID > 0 {
-		fmt.Println("activeBoardID = ", activeBoardID)
+		//fmt.Println("activeBoardID = ", activeBoardID)
 		td.ActiveBoardID = app.session.GetInt(r, "boardID")
 	} else {
 		td.ActiveBoardID = 0
@@ -397,7 +397,7 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 		td = &templateDataBoard{}
 	}
 	if td.Positions != nil {
-		fmt.Println("Positions is not nil.  We should build MainGrid here...")
+		//fmt.Println("Positions is not nil.  We should build MainGrid here...")
 		td.MainGrid = app.preprocessBoardFromData(td.Positions, 0, "", "ro")
 	} else {
 		td.MainGrid = app.preprocessBoardFromRequest(r)
@@ -405,7 +405,7 @@ func (app *application) addDefaultDataBoard(td *templateDataBoard, r *http.Reque
 	// Default the boardID to 0
 	activeBoardID := app.session.GetInt(r, "boardID")
 	if activeBoardID > 0 {
-		fmt.Println("activeBoardID = ", activeBoardID)
+		//fmt.Println("activeBoardID = ", activeBoardID)
 		td.ActiveBoardID = app.session.GetInt(r, "boardID")
 	} else {
 		td.ActiveBoardID = 0
@@ -446,10 +446,10 @@ func (app *application) addDefaultDataBoards(td *templateDataBoards, r *http.Req
 	}
 	activeBoardID := app.session.GetInt(r, "boardID")
 	if activeBoardID > 0 {
-		fmt.Println("activeBoardID = ", activeBoardID)
+		//fmt.Println("activeBoardID = ", activeBoardID)
 		td.ActiveBoardID = activeBoardID
 	} else {
-		fmt.Println("boardID is empty:", activeBoardID)
+		//fmt.Println("boardID is empty:", activeBoardID)
 		td.ActiveBoardID = 0
 	}
 	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")
@@ -539,7 +539,7 @@ func (app *application) renderLogin(w http.ResponseWriter, r *http.Request, name
 		app.session.Remove(r, "authenticatedPlayerID")
 		app.session.Remove(r, "boardID")
 		app.session.Remove(r, "battleID")
-		fmt.Println("Session information has been removed...")
+		//fmt.Println("Session information has been removed...")
 	}
 
 	if err != nil {
@@ -575,10 +575,10 @@ func (app *application) renderPlayer(w http.ResponseWriter, r *http.Request, nam
 	}
 	activeBoardID := app.session.GetInt(r, "boardID")
 	if activeBoardID > 0 {
-		fmt.Println("activeBoardID = ", activeBoardID)
+		//fmt.Println("activeBoardID = ", activeBoardID)
 		td.ActiveBoardID = activeBoardID
 	} else {
-		fmt.Println("boardID is empty:", activeBoardID)
+		//fmt.Println("boardID is empty:", activeBoardID)
 		td.ActiveBoardID = 0
 	}
 	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")
@@ -621,10 +621,10 @@ func (app *application) renderPlayers(w http.ResponseWriter, r *http.Request, na
 	}
 	activeBoardID := app.session.GetInt(r, "boardID")
 	if activeBoardID > 0 {
-		fmt.Println("activeBoardID = ", activeBoardID)
+		//fmt.Println("activeBoardID = ", activeBoardID)
 		td.ActiveBoardID = activeBoardID
 	} else {
-		fmt.Println("boardID is empty:", activeBoardID)
+		//fmt.Println("boardID is empty:", activeBoardID)
 		td.ActiveBoardID = 0
 	}
 	td.AuthenticatedPlayerID = app.session.GetInt(r, "authenticatedPlayerID")

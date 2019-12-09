@@ -71,11 +71,17 @@
                 $("input[name='"+fn+"']:checkbox").prop('checked', true);
                 var td_id = "challenger_"+fn;
                 //console.log("checking "+td_id);
-                document.getElementById(td_id).style.backgroundColor=obj.PinColor;
+                try {
+                  document.getElementById(td_id).style.backgroundColor=obj.PinColor;
+                } catch (err) {
+                  console.log("Error while reviewing checkboxes; reload page");
+                  alert("Sorry! An error occurred. This page will be reloaded so that play can continue...");
+                  document.location.reload(true);
+                }
               }
               // Update turn
               $('input[type=hidden]#secretTurn').val(data.turn);
-              console.log("secretTurn has been defined as "+data.turn);
+              //console.log("secretTurn has been defined as "+data.turn);
               if (data.turn != "") { 
                 console.log("It's your turn!"); 
                 document.getElementById('turn_indicator').innerHTML = 'Your turn!';
@@ -109,7 +115,7 @@
         {{ else }}
         bid = {{.OpponentBoardID}};
         {{ end }}
-        var misses = ["Plop! Nothing but water.", "Pfffft! Maybe next time.", "Dang :( Another miss."]
+        var misses = ["Plop! Nothing but water.", "Pfffft! Maybe next time.", "Miss.  The thought of that striking anything useful just coudln't be 'fathomed'!"]
         var missileMiss = misses[Math.floor(Math.random() * misses.length)];
         var hits = ["KABOOM! Your aim was spot on!", "BOOM! Got 'em!", "YES! Successful strike!"]
         var missileHit = hits[Math.floor(Math.random() * hits.length)];
@@ -151,6 +157,7 @@
                     document.getElementById("opponent_"+fieldName).style.backgroundColor=data.pin_color;
                     if (data.sunken_ship != "") {
                         alert("You've sunk their "+data.sunken_ship+"!");
+                        console.log("data.winner:"+data.winner);
                         if (data.winner) {
                             alert("And you have won the battle!  Congratulations!");
                             gp = false;

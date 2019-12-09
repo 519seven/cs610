@@ -47,7 +47,7 @@ func (app *application) postLogin(w http.ResponseWriter, r *http.Request) {
 	rowid, err := app.players.Authenticate(form.Get("screenName"), form.Get("password"))
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
-			form.Errors.Add("generic", "Email or password is incorrect")
+			form.Errors.Add("generic", "Supplied credentials are incorrect")
 			app.renderLogin(w, r, "login.page.tmpl", &templateDataLogin{Form: form})
 		} else {
 			app.serverError(w, err)
@@ -99,14 +99,13 @@ func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 	form := forms.New(r.PostForm)
 	form.Required("screenName")
 	form.MaxLength("screenName", 16)
-	form.Required("emailAddress")
-	form.MaxLength("emailAddress", 55)
-	form.MatchesPattern("emailAddress", forms.EmailRX)
+	form.SpacesAbsent("screenName")
 	form.Required("password")
 	form.MaxLength("password", 55)
 	form.MinLength("password", 8)
 	form.Required("passwordConf")
 	form.FieldsMatch("password", "passwordConf", true)
+	form.PasswordComplexity()
 
 	// If our validation has failed anywhere along the way, redisplay signup form
 	if !form.Valid() {
@@ -116,10 +115,10 @@ func (app *application) postSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = app.players.Insert(r.PostForm.Get("screenName"), r.PostForm.Get("emailAddress"), r.PostForm.Get("password"))
+	_, err = app.players.Insert(r.PostForm.Get("screenName"), "", r.PostForm.Get("password"))
 	if err != nil {
-		if errors.Is(err, models.ErrDuplicateEmail) {
-			form.Errors.Add("email", "Address is already in use")
+		if errors.Is(err, models.ErrDuplicateScreenName) {
+			form.Errors.Add("screenName", "Screen name is already in use")
 			app.renderSignup(w, r, "signup.page.tmpl", &templateDataSignup{Form: form})
 		} else {
 			app.serverError(w, err)
@@ -303,7 +302,7 @@ func (app *application) viewBattle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Get postitions for Player1's ships (by boardID)
-	fmt.Println("challengerBoardID:", int(b.Player1BoardID))
+	//fmt.Println("challengerBoardID:", int(b.Player1BoardID))
 	c, err := app.boards.GetPositions(int(b.Player1BoardID))
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
@@ -498,7 +497,7 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 		return
 	}
-	app.infoLog.Println("boardID: ", boardID)
+	//app.infoLog.Println("boardID: ", boardID)
 	p, err := app.boards.GetPositions(boardID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
@@ -526,8 +525,8 @@ func (app *application) displayBoard(w http.ResponseWriter, r *http.Request) {
 // List boards
 func (app *application) listBoards(w http.ResponseWriter, r *http.Request) {
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
-	boardID := app.session.GetInt(r, "boardID")
-	app.infoLog.Println("boardID immediately after setting is:", boardID)
+	//boardID := app.session.GetInt(r, "boardID")							// debug
+	//app.infoLog.Println("boardID immediately after setting is:", boardID)	// debug
 	s, err := app.boards.List(playerID)
 	if err != nil {
 		if xerrors.Is(err, models.ErrNoRecord) {
@@ -768,7 +767,7 @@ func (app *application) updatePosition(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 	}
 	coordY := shipXY[len(shipXY)-1:]						// get the last character
-	pinColor, _, winner, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY, newSecret)
+	pinColor, _, winner, err := app.positions.Update(playerID, playerID, battleID, boardID, coordX, coordY, newSecret)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -818,7 +817,8 @@ func (app *application) getStrikes(w http.ResponseWriter, r *http.Request) {
 		}
 		var JR JsonResponse
 
-		JR.Turn = app.battles.CheckTurn(battleID, playerID)
+		_, secretTurn := app.battles.CheckTurn(battleID, playerID)
+		JR.Turn = secretTurn
 		if err != nil {
 			app.serverError(w, err)
 			app.errorLog.Println("Error", err.Error())
@@ -866,15 +866,16 @@ func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
 	boardID, _ := strconv.Atoi(form.Get("boardID"))
 	coordX, _ := strconv.Atoi(form.Get("coordX"))
 	coordY := form.Get("coordY")
-	fmt.Println("coordX:", coordX, "|coordY:", coordY)
-	fmt.Println("battleID:", battleID)
-	fmt.Println("boardID:", boardID)
+	//fmt.Println("coordX:", coordX, "|coordY:", coordY)
+	//fmt.Println("battleID:", battleID)
+	//fmt.Println("boardID:", boardID)
 	playerID := app.session.GetInt(r, "authenticatedPlayerID")
 	secretTurn := form.Get("secretTurn")
 	var out []byte;
 	var PT PlayerTurn
 
-	if app.checkTurn(playerID, battleID, secretTurn) {
+	playerTakingTheirTurn, validTurn := app.checkTurn(playerID, battleID, secretTurn)
+	if validTurn {
 		// Make sure this player belongs to this battle
 		//checkBattle(playerID, battleID)
 		// Update the database with the new strike, update Turn to be the other player
@@ -882,12 +883,12 @@ func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			app.serverError(w, err)
 		}
-		pinColor, shipType, winner, err := app.positions.Update(playerID, battleID, boardID, coordX, coordY, newSecret)
+		pinColor, shipType, winner, err := app.positions.Update(playerID, playerTakingTheirTurn, battleID, boardID, coordX, coordY, newSecret)
 		if err != nil {
 			app.infoLog.Println("Update failed for ", playerID, battleID, boardID, coordX, coordY)
 			app.errorLog.Println("Error", err.Error())
 		}
-		fmt.Println("pinColor is", pinColor)
+		//fmt.Println("pinColor is", pinColor)
 		PT.Valid = true
 		PT.PinColor = pinColor
 		PT.ShipType = shipType
@@ -918,12 +919,12 @@ func (app *application) recordStrike(w http.ResponseWriter, r *http.Request) {
 // BEGIN TURN
 
 // Given a key and playerID, check if they match what's in the database
-func (app *application) checkTurn(playerID, battleID int, secretTurn string) bool {
+func (app *application) checkTurn(playerID, battleID int, secretTurn string) (int, bool) {
 	// Make sure the player that submitted this strike is the one whose turn it is
 	// Check the secret_turn against the player's ID
-	whoseTurn := app.battles.CheckTurn(battleID, playerID)
-	if string(whoseTurn) == secretTurn && secretTurn != "" {
-		return true
+	playerWhoTookTheirTurn, databaseSecret := app.battles.CheckTurn(battleID, playerID)
+	if string(databaseSecret) == secretTurn && secretTurn != "" {
+		return playerWhoTookTheirTurn, true
 	}
-	return false
+	return 0, false
 }

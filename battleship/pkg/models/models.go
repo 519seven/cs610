@@ -10,7 +10,7 @@ var (
 	ErrMissingBoardID = errors.New("Missing BoardID")
 	ErrNoRecord = errors.New("models: no matching record found")
 	ErrInvalidCredentials = errors.New("models: invalid credentials")
-	ErrDuplicateEmail = errors.New("models: duplicate email")
+	ErrDuplicateScreenName = errors.New("models: duplicate screen name")
 )
 
 type About struct {

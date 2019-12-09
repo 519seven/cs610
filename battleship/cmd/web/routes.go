@@ -26,7 +26,6 @@ func (app *application) routes() http.Handler {
 	// Basics - home and about
 	mux.Get("/", dynamicMiddleware.ThenFunc(app.home))
 	mux.Get("/about", dynamicMiddleware.ThenFunc(app.about))
-
 	// BATTLES
 	// display list of battles
 	mux.Get("/status/battles/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBattles))
@@ -46,17 +45,9 @@ func (app *application) routes() http.Handler {
 	// Enter the battle (shows board with selections that the users can click on)
 	mux.Post("/battle/enter/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.enterBattle))
 	mux.Post("/battle/strike", strikeMiddleware.Append(app.requireAuthentication).ThenFunc(app.recordStrike))
-	//mux.Post("/battle/turn", strikeMiddleware.Append(app.requireAuthentication).ThenFunc(app.checkTurn))
-	//mux.Post("/battle/strike", dynamicMiddleware.ThenFunc(app.recordStrike))
-
-	/*
-	mux.HandleFunc("/battle/create", app.createBattle)
-	mux.HandleFunc("/battle/list", app.listBattle)
-	mux.HandleFunc("/battle/update", app.updateBattle)
-	*/
 	// BOARDS
-	mux.Post("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoard))			// save board info
-	mux.Get("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoardForm))		// display board if GET
+	mux.Post("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoard))	// save board info
+	mux.Get("/board/create", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.createBoardForm))	// display board if GET
 	mux.Get("/board/list", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.listBoards))
 	mux.Post("/board/select", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.selectBoard))
 	mux.Post("/board/update/:id", dynamicMiddleware.ThenFunc(app.updateBoard))
@@ -69,15 +60,10 @@ func (app *application) routes() http.Handler {
 	mux.Get("/player/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.displayPlayer))
 	// POSITIONS
 	mux.Get("/position/update/:id", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.updatePosition))
-	// SHIPS
-	/*
-		mux.HandleFunc("/ship", app.selectShip)
-		mux.HandleFunc("/ship/list", app.listShip)
-	*/
 	// AUTH
 	mux.Get("/freshstart", alice.New(app.session.Enable).ThenFunc(app.getSignupForm))
-	mux.Get("/signup", dynamicMiddleware.ThenFunc(app.getSignupForm))		// display form if GET
-	mux.Post("/signup", alice.New(app.session.Enable).ThenFunc(app.postSignup))			// save player info
+	mux.Get("/signup", dynamicMiddleware.ThenFunc(app.getSignupForm))			// display form if GET
+	mux.Post("/signup", alice.New(app.session.Enable).ThenFunc(app.postSignup))	// save player info
 	mux.Get("/login", dynamicMiddleware.ThenFunc(app.loginForm))
 	mux.Post("/login", dynamicMiddleware.ThenFunc(app.postLogin))
 	mux.Post("/logout", dynamicMiddleware.Append(app.requireAuthentication).ThenFunc(app.postLogout))
