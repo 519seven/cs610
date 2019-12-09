@@ -41,13 +41,17 @@ function go_get_var {
       GOBASE=$(basename $GO 2>/dev/null)
       printf "Setting basename to $GOBASE\n"
     else
-      # Look in user's home directory for the downloader 
+      # Look in user's home directory for the downloader
+      printf "go version 1.13 was not found, searching user's home...\n" 
       GO=$(find ~ -type f -name 'go1.13' -o -name 'go1.13.1' | grep bin | head -1)
       if [ $? -eq 0 ]; then
         GOBASE=$(basename $GO 2>/dev/null)
+        printf "Found $GOBASE\n"
         if ! $GO version 2>/dev/null; then
           # go was found but it isn't installed
           GO=""
+        else
+          GOVER=$($GO version)
         fi
       else
         printf "go is not version 1.13\n"
