@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	//"errors"
 	"fmt"
 	"net/http"
 
@@ -31,6 +30,7 @@ func (app *application) logRequest(next http.Handler) http.Handler {
 // noSurf - prevent CSRF by adding a token to a hidden field in each form
 //          and check that the token and cookie info match
 func noSurf(next http.Handler) http.Handler {
+	//fmt.Println("in noSurf")												// debug
 	csrfHandler := nosurf.New(next)
 	csrfHandler.SetBaseCookie(http.Cookie{
 		HttpOnly: 	true,
@@ -63,14 +63,14 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 func (app *application) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// check if authenticatedPlayerID is present; if not, call the next handler
-		fmt.Println("checking for authenticatedPlayerID")
+		//fmt.Println("checking for authenticatedPlayerID")					// debug
 		exists := app.session.Exists(r, "authenticatedPlayerID")
 		if !exists {
-			fmt.Println("authenticatedPlayerID does not exist")
+			//fmt.Println("authenticatedPlayerID does not exist")			// debug
 			next.ServeHTTP(w, r)
 			return
 		}
-		fmt.Println("authenticatedPlayerID exists?:", exists)
+		//fmt.Println("authenticatedPlayerID exists?:", exists) 			// debug
 
 		// fetch details of current user from database
 		// if no matching record was found, remove their session info
@@ -81,10 +81,10 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 				app.session.Remove(r, "authenticatedPlayerID")
 			}
 		}
-		fmt.Println("Player ID:", player.ID)
+		//fmt.Println("Player ID:", player.ID) 								// debug
 
 		if player.ID == 0 {					// or no rows in the result set
-			fmt.Println("Session has not been established:", err.Error())
+			//fmt.Println("Session has not been established:", err.Error())	// debug
 			if app.session != nil {
 				app.session.Remove(r, "authenticatedPlayerID")
 			}
@@ -96,7 +96,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			app.serverError(w, err)
 			return
 		}
-		fmt.Println("Everything seems normal up to this point...")
+		//fmt.Println("Everything seems normal up to this point...")		// debug
 		// if the user appears to be active and legit:
 		// - create a new copy of the request with a true boolean value added 
 		//   to the request context to indicate our satisfaction with their status

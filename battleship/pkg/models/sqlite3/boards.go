@@ -119,12 +119,12 @@ func (m *BoardModel) GetInfo(playerID, boardID int) (*models.Board, error) {
 }
 
 // Get positions on board
-func (m *BoardModel) GetPositions(rowid int) ([]*models.Positions, error) {
-	fmt.Println("boardID = ", rowid)
+func (m *BoardModel) GetPositions(rowid int) ([]*models.Position, error) {
+	//fmt.Println("boardID = ", rowid)
 	if rowid == 0 {
 		return nil, models.ErrMissingBoardID
 	}
-	positions := []*models.Positions{}
+	positions := []*models.Position{}
 	stmt := `SELECT 
 		b.rowid as boardID, p.playerID as playerID, 
 		p.rowid as positionID, s.shipType, p.coordX, p.coordY, p.pinColor
@@ -134,10 +134,10 @@ func (m *BoardModel) GetPositions(rowid int) ([]*models.Positions, error) {
 		LEFT OUTER JOIN Ships s ON
 		s.rowid = p.shipID
 		WHERE b.rowid = ?` // and playerID = this user's ID
-	fmt.Println("board positions sql for ", rowid, ">>", stmt)
+	//fmt.Println("board positions sql for ", rowid, ">>", stmt)
 	rows, err := m.DB.Query(stmt, rowid)
 	for rows.Next() {
-		p := &models.Positions{}
+		p := &models.Position{}
 		// Assign fields in rowset to Board model's "properties"
 		err = rows.Scan(&p.ID, &p.PlayerID, &p.PositionID, &p.ShipType, &p.CoordX, &p.CoordY, &p.PinColor)
 		if err != nil {
@@ -202,7 +202,7 @@ func (m *BoardModel) Insert(playerID int, boardID int, shipName string, arrayOfC
 		//fmt.Println("[INFO] inserted positions into board with id=", boardID)
 	}
 	// Return
-	fmt.Println("Done with", shipName, "\nReturning control back to createBoard")
+	//fmt.Println("Done with", shipName, "\nReturning control back to createBoard")
 	return 0, nil
 }
 

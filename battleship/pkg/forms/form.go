@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	B "github.com/519seven/cs610/battleship/pkg/models/sqlite3"
+	gpu "github.com/briandowns/GoPasswordUtilities"
 )
 
 var EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
@@ -25,6 +26,17 @@ type Form struct {
 func New(data url.Values) *Form {
 	return &Form{ data,
 	errors(map[string][]string{}), }
+}
+
+// FieldsMatch - check to ensure fields match; ex: passwords
+func (f *Form) FieldsMatch(f1, f2 string, shouldTheyMatch bool) {
+	field1 := f.Get(f1)
+	field2 := f.Get(f2)
+	if (field1 == field2 && shouldTheyMatch == true) || (field1 != field2 && shouldTheyMatch == false) {
+		return
+	} else if (field1 == field2 && shouldTheyMatch == false) || (field1 != field2 && shouldTheyMatch == true) {
+		f.Errors.Add("password", "Password and password confirmation do not match")
+	}
 }
 
 // Matches Pattern - for verifying a pattern match
@@ -60,14 +72,13 @@ func (f *Form) MinLength(field string, d int) {
 	}
 }
 
-// FieldsMatch - check to ensure fields match; ex: passwords
-func (f *Form) FieldsMatch(f1, f2 string, shouldTheyMatch bool) {
-	field1 := f.Get(f1)
-	field2 := f.Get(f2)
-	if (field1 == field2 && shouldTheyMatch == true) || (field1 != field2 && shouldTheyMatch == false) {
-		return
-	} else if (field1 == field2 && shouldTheyMatch == false) || (field1 != field2 && shouldTheyMatch == true) {
-		f.Errors.Add("password", "Password and password confirmation do not match")
+// PasswordComplexity - make sure password meets basic complexity requirements
+func (f *Form) PasswordComplexity() {
+	pass := f.Get("password")
+	gpuPass := gpu.New(pass)    
+    gpuPass.ProcessPassword()
+    if gpuPass.ComplexityRating() == "Horrible" || gpuPass.ComplexityRating() == "Weak" {
+		f.Errors.Add("password", "Your password is too weak. Please use alpha-numeric, mixed case, and special characters.")
 	}
 }
 
@@ -125,6 +136,15 @@ func ShipLength(shipName string) int {
 	}
 	return 0
 }
+
+// MaxLength - for checking maximum number of characters
+func (f *Form) SpacesAbsent(field string) {
+	value := f.Get(field)
+	if strings.Contains(value, " ") || strings.Contains(value, "\t") || strings.Contains(value, "\n") || strings.Contains(value, "\f") || strings.Contains(value, "\r") {
+		f.Errors.Add(field, "This field cannot contain whitespace")
+	}
+}
+
 
 // ValidNumberOfItems - make sure that the ship in question has proper pin placement
 func (f *Form) ValidNumberOfItems(coordinates []string, shipName string) {

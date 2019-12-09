@@ -3,29 +3,33 @@
 {{define "title"}}View Board{{end}}
 {{define "main"}}
     <div>
-        <label>Welcome to The Battle of {{.Battle.Title}}</label>
+        <label>Welcome to The Battle of {{.Battle.Title}}
+            <form style='display:inline;' action="/battle/enter/{{.Battle.ID}}" method=POST>
+                <input type='hidden' name='csrf_token' value='{{$.CSRFToken}}'>
+                <input type=button onclick='javascript:this.form.submit()' value="Enter Battle">
+            </form>
+        </label>
         <table border=1>
-            <tr><td>Your Board</td><tr>
-            <tr>
-                <td>
-                    {{.ChallengerGrid}}
-                </td>
-            </tr>
             <tr><td>Your Opponent's Board</td><tr>
             <tr>
                 <td>
                     {{.OpponentGrid}}
                 </td>
             </tr>
+            <tr><td>Your Board</td><tr>
             <tr>
                 <td>
-                    <form action="/battle/enter/{{.Battle.ID}}" method=POST>
-                        <input type='hidden' name='csrf_token' value='{{$.CSRFToken}}'>
-                        <input type=submit value="Enter Battle">
-                    </form>
+                    {{.ChallengerGrid}}
                 </td>
             </tr>
         </table>
     </div>
+	<script type='text/javascript'>
+    $('.striker').click(function() {
+        if (this.checked) {
+            alert('Please click on "Enter Battle" if you wish to battle your opponent!');
+        }
+    })
+    </script>
 </form>
 {{end}}

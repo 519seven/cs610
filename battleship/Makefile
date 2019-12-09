@@ -18,8 +18,10 @@
 ENV_FILE=.install_env
 
 # Binary names
-BINARY_NAME=battleship
-
+BINARY_NAME=./battleship
+DB_FILE=./battleship.db
+GO_ARTIFACTS=._*
+TLS_CERTS=./tls/*.pem
 
 all: setup certs build
 
@@ -48,7 +50,14 @@ certs:
 clean: 
 		@rm -f $(BINARY_NAME)
 		@rm -f $(ENV_FILE)
-		@echo "Removing $(BINARY_NAME) and $(ENV_FILE)...Done!"
+		@echo "Removing $(BINARY_NAME) and $(ENV_FILE)..."
+		@rm -f $(GO_ARTIFACTS)
+		@echo "Removing hidden files that cause build failures..."
+		@rm -f $(TLS_CERTS)
+		@echo "Removing TLS certificates..."
+		@rm -f $(DB_FILE)
+		@echo "Removing DB file..."
+		@echo "Done!"
 
 setup:
 		@./setup_env.sh && {													\

@@ -10,7 +10,7 @@ var (
 	ErrMissingBoardID = errors.New("Missing BoardID")
 	ErrNoRecord = errors.New("models: no matching record found")
 	ErrInvalidCredentials = errors.New("models: invalid credentials")
-	ErrDuplicateEmail = errors.New("models: duplicate email")
+	ErrDuplicateScreenName = errors.New("models: duplicate screen name")
 )
 
 type About struct {
@@ -24,13 +24,12 @@ type Battle struct {
 	Player1ID 				int
 	Player1ScreenName		string
 	Player1BoardID			int
-	Player1BoardName		sql.NullString
 	Player1Accepted			bool
 	Player2ID 				int
 	Player2ScreenName		string
 	Player2BoardID			int
-	Player2BoardName		sql.NullString
 	Player2Accepted			bool
+	ChallengerBoardName		sql.NullString
 	ChallengeDate			time.Time
 	Turn      				sql.NullInt64
 }
@@ -61,15 +60,15 @@ type Player struct {
 	LastLogin  				sql.NullString
 }
 
-type Positions struct {
+type Position struct {
 	ID      				int
 	PlayerID 				int
 	BattleID  				sql.NullInt64
 	PositionID      		int
-	ShipType		 		string
+	ShipType		 		sql.NullString
 	CoordX					int
 	CoordY					string
-	PinColor				int
+	PinColor				string
 }
 
 type Signup struct {
