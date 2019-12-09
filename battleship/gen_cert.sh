@@ -15,7 +15,7 @@ if [ ! -f cert.pem ] || [ ! -f key.pem ]; then
   homedir=$(getent passwd "$USER" | cut -d: -f6)
   printf "Using $homedir as your home directory\n"
   printf "Searching for generate_cert.go (this may take a while)\n"
-  gencert=$(find $homedir -type f -name generate_cert.go -print -exec find {} -name $GOBASE \;)
+  gencert=$(find $homedir -type f -name generate_cert.go -print -exec find {} -name $GOBASE \;|head -1)
   printf "gencert: $gencert\nGO: $GO\n"
   printf "Generating RSA key pair...\n"
   $GO run $gencert --rsa-bits=2048 --host=localhost
