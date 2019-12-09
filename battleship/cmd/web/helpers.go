@@ -87,6 +87,11 @@ func initializeDB(dsn string, initdb bool) (*sql.DB, error) {
 		('bob', 'bob@bob.com', ?), ('sue', 'sue@sue.com', ?), 
 		('elvis', 'elvis@graceland.com', ?), ('maria', 'maria@presley.com', ?)`)
 	stmt.Exec(hashedPassword, hashedPassword, elvisPassword, hashedPassword)
+	// I created a board for Bob in battleship.db.sample
+	// Running `make` will copy that db into place
+	fmt.Println("Using sample database; If behavior is unpredictable, ")
+	fmt.Println("rename battleship.db.sample to battleship.db.dontuse ")
+	fmt.Println("and run `make clean && make` again...")
 
 	return db, nil
 }

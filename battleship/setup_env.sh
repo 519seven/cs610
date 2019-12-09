@@ -2,6 +2,8 @@
 
 set -e
 
+BATTLESHIP_DB=./battleship.db
+BATTLESHIP_SAMPLE_DB=./battleship.db.sample
 CURDIR=$(pwd)
 INSTALLGO="N"
 USER_GOROOT=/usr/local
@@ -37,6 +39,7 @@ function go_get_var {
       # Found version 1.13
       printf "$GOVER was found, able to continue...\n"
       GOBASE=$(basename $GO 2>/dev/null)
+      printf "Setting basename to $GOBASE\n"
     else
       # Look in user's home directory for the downloader 
       GO=$(find ~ -type f -name 'go1.13' -o -name 'go1.13.1' | grep bin | head -1)
@@ -96,6 +99,14 @@ function go_get_go {
 }
 
 function save_env {
+  printf "Using [$GO] as go executable\n"
+  # Ultimate defaults
+  if [[ -z $GO ]]; then
+    GO=go/bin/go1.13
+  fi
+  if [[ -z $GOBASE ]]; then
+    GOBASE=go1.13
+  fi
   echo -e "export GO=$GO\nexport GOBASE=$GOBASE" > .install_env
 }
 # -----------------------------------------------------------------------------
@@ -107,5 +118,11 @@ if [[ $GOVER != *"1.13"* ]]; then
   go_get_var || { printf "Error in go_get_var. Exiting...\n"; exit 4; }
   go_get_go || { printf "Error in go_get_go. Exiting...\n"; exit 5; }
 else
-  printf "You have the correct go version\n"
+  if [ ! -e .install_env ]; then
+    save_env
+  fi
+  printf "You have the correct go version ($GO|$GOBASE|$GOVER)\n"
+fi
+if [[ -e $BATTLESHIP_SAMPLE_DB ]]; then
+  cp $BATTLESHIP_SAMPLE_DB $BATTLESHIP_DB && printf "Copying sample db into place...\n";
 fi

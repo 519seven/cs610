@@ -14,7 +14,7 @@ type BattleModel struct {
 
 // Accept a challenge (battle)
 func (m *BattleModel) Accept(player2ID, boardID, battleID int) (int, error) {
-	var player2IDFromDB int; player2IDFromDB = 0
+	var player2IDFromDB int = 0
 	// Check to be sure that the person accepting this battle is matches the "player2ID"
 	stmt := `SELECT player2ID FROM Battles WHERE rowid = ? AND player2Accepted = false`
 	err := m.DB.QueryRow(stmt, battleID).Scan(&player2IDFromDB)
@@ -37,7 +37,7 @@ func (m *BattleModel) Accept(player2ID, boardID, battleID int) (int, error) {
 
 // GetBoardOwner - Ensure the player is the owner of this board and this board is part of this battle
 func (m *BattleModel) CheckBoardOwner(playerID, battleID, boardID int) bool {
-	var battleIDEntry int; battleIDEntry = 0
+	var battleIDEntry int = 0
 	stmt := `SELECT rowid
 				FROM Battles
 				WHERE
@@ -67,8 +67,8 @@ func (m *BattleModel) CheckChallenger(player1ID, battleID, player2BoardID int) b
 
 // Create a new Battle - record the challenger (player1) and the challengee (player2)
 func (m *BattleModel) Create(player1ID, player1BoardID, player2ID int, secretTurn string) (int, error) {
-	var rowid int; rowid = 0
-	var battleID int; battleID = 0
+	var rowid int = 0
+	var battleID int = 0
 	
 	//fmt.Println("Currently, only one game per challenger/challengee pair is supported at a time.")
 	//fmt.Println("Checking to see if there is already a challenge out there...")

@@ -52,7 +52,21 @@
 		</table>
 		{{end}}
 	{{else}}
-		<p>You need to create a board, then select the board and challenge a player.</p>
+		<p>You have no challenges!  Before they will show up here, you first need to:
+		<ol>
+		  <ol>
+		  <li>
+		    Create a board (under <a href="/board/list">Boards</a>),
+		  </li>
+		  <li>
+		    Select the board (also under <a href="/board/list">Boards</a>); and,
+		  </li>
+		  <li>
+		    Challenge a player (under <a href="/player/list">Active Players</a>).
+		  </li>
+		  </ol>
+		</ol>
+		</p>
 		<a href="/board/create">Create a new board</a>
 	{{end}}
 {{end}}
