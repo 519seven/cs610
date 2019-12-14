@@ -20,10 +20,22 @@ ENV_FILE=.install_env
 # Binary names
 BINARY_NAME=./battleship
 DB_FILE=./battleship.db
+DICT=/usr/share/dict/words
 GO_ARTIFACTS=._*
 TLS_CERTS=./tls/*.pem
 
+ifeq ($(shell test -e $(DICT) && echo -n yes), yes)
+	RESULT=pass
+else
+	RESULT=fail
+endif
+
+ifeq ($(RESULT),pass)
 all: setup certs build
+else
+@echo Dictionary not installed. Exiting.
+	@echo Please install dictionary-common package.
+endif
 
 test:
 		env
