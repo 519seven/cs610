@@ -24,57 +24,49 @@ DICT=/usr/share/dict/words
 GO_ARTIFACTS=._*
 TLS_CERTS=./tls/*.pem
 
-ifeq ($(shell test -e $(DICT) && echo -n yes), yes)
-	RESULT=pass
-else
-	RESULT=fail
-endif
-
-ifeq ($(RESULT),pass)
-all: setup certs build
-else
-@echo Dictionary not installed. Exiting.
-	@echo Please install dictionary-common package.
-endif
+all: check setup certs build
 
 test:
-		env
+	env
 
 build: 
-		@set -e; ./build_project.sh	&& { 										\
-			echo "---------------- Project build succeeded! -----------------";	\
-			echo "---------- Run ./battleship (-h for more info)) -----------";	\
-			echo "------------------ Your battle awaits you! ----------------"; \
-			exit 0; 															\
-		 } || {																	\
-			echo "Project build failed. Check output.";							\
-			exit 1;																\
-		 }
-		
+	@set -e; ./build_project.sh && { 					\
+	echo "---------------- Project build succeeded! -----------------";	\
+	echo "---------- Run ./battleship (-h for more info)) -----------";	\
+	echo "------------------ Your battle awaits you! ----------------"; 	\
+	exit 0;									\
+	} || {									\
+	echo "Project build failed. Check output.";				\
+	exit 1;									\
+	}
+
 certs:
-		@set -e; ./gen_cert.sh && {												\
-			echo "Certificates are in place! Next is build.";					\
-		 } || {																	\
-		 	echo "Cert we not generated. Check output."; 						\
-			exit 1;																\
-		 }
+	@set -e; ./gen_cert.sh && {						\
+	echo "Certificates are in place! Next is build.";			\
+	} || {									\
+	echo "Cert we not generated. Check output."; 				\
+	exit 1;									\
+  	}
+
+check:
+	@[[ -e "$(DICT)" ]] && echo "Found dictionary" || { echo "Dictionary is not installed, please install it for minimum password requirements check"; exit 2; }
 
 clean: 
-		@rm -f $(BINARY_NAME)
-		@rm -f $(ENV_FILE)
-		@echo "Removing $(BINARY_NAME) and $(ENV_FILE)..."
-		@rm -f $(GO_ARTIFACTS)
-		@echo "Removing hidden files that cause build failures..."
-		@rm -f $(TLS_CERTS)
-		@echo "Removing TLS certificates..."
-		@rm -f $(DB_FILE)
-		@echo "Removing DB file..."
-		@echo "Done!"
+	@rm -f $(BINARY_NAME)
+	@rm -f $(ENV_FILE)
+	@echo "Removing $(BINARY_NAME) and $(ENV_FILE)..."
+	@rm -f $(GO_ARTIFACTS)
+	@echo "Removing hidden files that cause build failures..."
+	@rm -f $(TLS_CERTS)
+	@echo "Removing TLS certificates..."
+	@rm -f $(DB_FILE)
+	@echo "Removing DB file..."
+	@echo "Done!"
 
 setup:
-		@./setup_env.sh && {													\
-			echo "Set up complete!";											\
-		 } || { 																\
-		 	echo "Setup exiting!";												\
-			exit 1;																\
-		 }
+	@./setup_env.sh && {							\
+	echo "Set up complete!";						\
+	} || { 									\
+	echo "Setup exiting!";							\
+	exit 1;									\
+	}
